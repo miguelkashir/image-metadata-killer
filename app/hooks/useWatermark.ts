@@ -13,20 +13,24 @@ interface UseWatermarkReturn {
   // image
   watermarkUrl: string | null;
   size: number;
+  flipped: boolean;
   // text
   text: string;
   fontSize: number;
   color: string;
+  rotation: number;
   // shared
   position: WatermarkPosition;
   opacity: number;
   setType: (t: WatermarkType) => void;
   setPosition: (pos: WatermarkPosition) => void;
   setSize: (s: number) => void;
+  setFlipped: (f: boolean) => void;
   setOpacity: (o: number) => void;
   setText: (t: string) => void;
   setFontSize: (s: number) => void;
   setColor: (c: string) => void;
+  setRotation: (r: number) => void;
   handleWatermarkFile: (f: File) => void;
   handleWatermarkDrop: (e: DragEvent<HTMLDivElement>) => void;
   handleWatermarkChange: (e: ChangeEvent<HTMLInputElement>) => void;
@@ -38,12 +42,14 @@ interface UseWatermarkReturn {
 export function useWatermark(): UseWatermarkReturn {
   const [type, setType] = useState<WatermarkType>("image");
   const [watermarkUrl, setWatermarkUrl] = useState<string | null>(null);
+  const [flipped, setFlipped] = useState(false);
   const [position, setPosition] = useState<WatermarkPosition>({ x: 90, y: 90 });
   const [size, setSize] = useState(25);
   const [opacity, setOpacity] = useState(80);
   const [text, setText] = useState("");
   const [fontSize, setFontSize] = useState(5);
   const [color, setColor] = useState("#ffffff");
+  const [rotation, setRotation] = useState(0);
 
   const handleWatermarkFile = useCallback((f: File) => {
     if (!f.type.startsWith("image/")) {
@@ -98,27 +104,33 @@ export function useWatermark(): UseWatermarkReturn {
     setType("image");
     setPosition({ x: 90, y: 90 });
     setSize(25);
+    setFlipped(false);
     setOpacity(80);
     setFontSize(5);
     setColor("#ffffff");
+    setRotation(0);
   }, [clearWatermark, clearText]);
 
   return {
     type,
     watermarkUrl,
     size,
+    flipped,
     text,
     fontSize,
     color,
+    rotation,
     position,
     opacity,
     setType,
     setPosition,
     setSize,
+    setFlipped,
     setOpacity,
     setText,
     setFontSize,
     setColor,
+    setRotation,
     handleWatermarkFile,
     handleWatermarkDrop,
     handleWatermarkChange,

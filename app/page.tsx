@@ -36,6 +36,8 @@ export default function Home() {
     metadataHook.reset();
     downloadHook.resetCleanSize();
     downloadHook.resetTargetWidth();
+    downloadHook.resetFlipped();
+    downloadHook.resetImageRotation();
     watermark.reset();
   });
 
@@ -49,6 +51,8 @@ export default function Home() {
         position: watermark.position,
         size: watermark.size,
         opacity: watermark.opacity,
+        rotation: watermark.rotation,
+        flipped: watermark.flipped,
       };
     }
     if (watermark.type === "text" && watermark.text.trim().length > 0) {
@@ -59,6 +63,7 @@ export default function Home() {
         fontSize: watermark.fontSize,
         color: watermark.color,
         opacity: watermark.opacity,
+        rotation: watermark.rotation,
       };
     }
 
@@ -89,13 +94,17 @@ export default function Home() {
             <ImagePreview
               file={file}
               imageUrl={imageUrl!}
+              flipped={downloadHook.flipped}
+              imageRotation={downloadHook.imageRotation}
               onReset={fileHandler.reset}
               watermarkType={watermark.type}
               watermarkUrl={watermark.watermarkUrl}
               watermarkSize={watermark.size}
+              watermarkFlipped={watermark.flipped}
               watermarkText={watermark.text}
               watermarkFontSize={watermark.fontSize}
               watermarkColor={watermark.color}
+              watermarkRotation={watermark.rotation}
               watermarkPosition={watermark.position}
               watermarkOpacity={watermark.opacity}
               onPositionChange={watermark.setPosition}
@@ -105,27 +114,35 @@ export default function Home() {
               outputFormat={downloadHook.outputFormat}
               quality={downloadHook.quality}
               targetWidth={downloadHook.targetWidth}
+              flipped={downloadHook.flipped}
+              imageRotation={downloadHook.imageRotation}
               dimensions={dimensions}
               onFormatChange={downloadHook.setOutputFormat}
               onQualityChange={downloadHook.setQuality}
               onTargetWidthChange={downloadHook.setTargetWidth}
+              onFlipChange={downloadHook.setFlipped}
+              onRotateImage={downloadHook.rotateImage}
             />
 
             <WatermarkPanel
               type={watermark.type}
               watermarkUrl={watermark.watermarkUrl}
               size={watermark.size}
+              flipped={watermark.flipped}
               text={watermark.text}
               fontSize={watermark.fontSize}
               color={watermark.color}
+              rotation={watermark.rotation}
               opacity={watermark.opacity}
               onTypeChange={watermark.setType}
               onDrop={watermark.handleWatermarkDrop}
               onChange={watermark.handleWatermarkChange}
               onSizeChange={watermark.setSize}
+              onFlipChange={watermark.setFlipped}
               onTextChange={watermark.setText}
               onFontSizeChange={watermark.setFontSize}
               onColorChange={watermark.setColor}
+              onRotationChange={watermark.setRotation}
               onOpacityChange={watermark.setOpacity}
               onRemove={
                 watermark.type === "text"

@@ -4,19 +4,24 @@ import type {
   WatermarkPosition,
   WatermarkType,
 } from "@/app/hooks/useWatermark";
+import type { ImageRotation } from "@/app/hooks/useImageDownload";
 
 interface ImagePreviewProps {
   file: File;
   imageUrl: string;
+  flipped?: boolean;
+  imageRotation?: ImageRotation;
   onReset: () => void;
   watermarkType?: WatermarkType;
   // image watermark
   watermarkUrl?: string | null;
   watermarkSize?: number;
+  watermarkFlipped?: boolean;
   // text watermark
   watermarkText?: string;
   watermarkFontSize?: number;
   watermarkColor?: string;
+  watermarkRotation?: number;
   // shared
   watermarkPosition?: WatermarkPosition;
   watermarkOpacity?: number;
@@ -30,14 +35,15 @@ interface ImageRect {
   height: number;
 }
 
-function getContainedRect(elem: HTMLImageElement): ImageRect {
+function getContainedRect(elem: HTMLImageElement, rotation: ImageRotation): ImageRect {
   const { naturalWidth, naturalHeight, clientWidth, clientHeight } = elem;
-  const scale = Math.min(
-    clientWidth / naturalWidth,
-    clientHeight / naturalHeight,
-  );
-  const w = naturalWidth * scale;
-  const h = naturalHeight * scale;
+  // For 90/270° the image occupies swapped natural dimensions within the element
+  const isSwapped = rotation === 90 || rotation === 270;
+  const natW = isSwapped ? naturalHeight : naturalWidth;
+  const natH = isSwapped ? naturalWidth : naturalHeight;
+  const scale = Math.min(clientWidth / natW, clientHeight / natH);
+  const w = natW * scale;
+  const h = natH * scale;
 
   return {
     x: (clientWidth - w) / 2,
@@ -50,13 +56,17 @@ function getContainedRect(elem: HTMLImageElement): ImageRect {
 export const ImagePreview = ({
   file,
   imageUrl,
+  flipped = false,
+  imageRotation = 0,
   onReset,
   watermarkType = "image",
   watermarkUrl,
   watermarkSize = 25,
+  watermarkFlipped = false,
   watermarkText = "",
   watermarkFontSize = 5,
   watermarkColor = "#ffffff",
+  watermarkRotation = 0,
   watermarkPosition = { x: 90, y: 90 },
   watermarkOpacity = 80,
   onPositionChange,
@@ -68,9 +78,9 @@ export const ImagePreview = ({
 
   const updateImageRect = useCallback(() => {
     if (imgRef.current && imgRef.current.naturalWidth > 0) {
-      setImageRect(getContainedRect(imgRef.current));
+      setImageRect(getContainedRect(imgRef.current, imageRotation));
     }
-  }, []);
+  }, [imageRotation]);
 
   useEffect(() => {
     const observer = new ResizeObserver(updateImageRect);
@@ -80,6 +90,11 @@ export const ImagePreview = ({
 
     return () => observer.disconnect();
   }, [updateImageRect]);
+
+  // Re-compute rect when rotation changes (ResizeObserver won't fire)
+  useEffect(() => {
+    updateImageRect();
+  }, [imageRotation, updateImageRect]);
 
   // Clamp using the actual rendered element dimensions so edges stay within the image.
   const posFromPointer = useCallback(
@@ -194,6 +209,9 @@ export const ImagePreview = ({
           src={imageUrl}
           alt={file.name}
           className="relative z-10 w-full max-h-96 object-contain"
+          style={{
+            transform: `rotate(${imageRotation}deg)${flipped ? " scaleX(-1)" : ""}`,
+          }}
           onLoad={updateImageRect}
         />
 
@@ -207,7 +225,7 @@ export const ImagePreview = ({
             style={{
               left: wmLeft,
               top: wmTop,
-              transform: "translate(-50%, -50%)",
+              transform: `translate(-50%, -50%) rotate(${watermarkRotation}deg)${watermarkFlipped ? " scaleX(-1)" : ""}`,
               width: (watermarkSize / 100) * imageRect!.width,
               opacity: watermarkOpacity / 100,
             }}
@@ -222,7 +240,7 @@ export const ImagePreview = ({
             style={{
               left: wmLeft,
               top: wmTop,
-              transform: "translate(-50%, -50%)",
+              transform: `translate(-50%, -50%) rotate(${watermarkRotation}deg)`,
               fontSize: (watermarkFontSize / 100) * imageRect!.width,
               color: watermarkColor,
               opacity: watermarkOpacity / 100,

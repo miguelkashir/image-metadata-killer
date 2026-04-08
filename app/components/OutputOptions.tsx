@@ -1,5 +1,6 @@
 import type { OutputFormat } from "@/app/types/image";
 import type { ImageDimensions } from "@/app/hooks/useFileHandler";
+import type { ImageRotation } from "@/app/hooks/useImageDownload";
 import {
   RESOLUTION_PRESETS,
   detectAspectRatio,
@@ -9,10 +10,14 @@ interface OutputOptionsProps {
   outputFormat: OutputFormat;
   quality: number;
   targetWidth: number | null;
+  flipped: boolean;
+  imageRotation: ImageRotation;
   dimensions: ImageDimensions | null;
   onFormatChange: (fmt: OutputFormat) => void;
   onQualityChange: (q: number) => void;
   onTargetWidthChange: (w: number | null) => void;
+  onFlipChange: (f: boolean) => void;
+  onRotateImage: (dir: "cw" | "ccw") => void;
 }
 
 const FORMATS: OutputFormat[] = ["jpeg", "png", "webp"];
@@ -21,10 +26,14 @@ export const OutputOptions = ({
   outputFormat,
   quality,
   targetWidth,
+  flipped,
+  imageRotation,
   dimensions,
   onFormatChange,
   onQualityChange,
   onTargetWidthChange,
+  onFlipChange,
+  onRotateImage,
 }: OutputOptionsProps) => {
   const aspectKey = dimensions
     ? detectAspectRatio(dimensions.width, dimensions.height)
@@ -40,6 +49,52 @@ export const OutputOptions = ({
 
   return (
     <div className="w-full bg-surface rounded-xl border border-overlay px-4 py-3 mb-4 space-y-3">
+      {/* Header */}
+      <span className="font-mono text-xs text-purple/80 uppercase tracking-widest">
+        settings
+      </span>
+
+      {/* Rotate */}
+      <div className="flex items-center gap-3">
+        <span className="font-mono text-xs text-muted w-16 shrink-0">
+          rotate
+        </span>
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => onRotateImage("ccw")}
+            className="font-mono text-xs px-3 py-1 rounded-md border border-overlay text-muted hover:text-fg hover:bg-overlay transition-colors duration-150 cursor-pointer"
+          >
+            ↺ 90°
+          </button>
+          <button
+            onClick={() => onRotateImage("cw")}
+            className="font-mono text-xs px-3 py-1 rounded-md border border-overlay text-muted hover:text-fg hover:bg-overlay transition-colors duration-150 cursor-pointer"
+          >
+            ↻ 90°
+          </button>
+        </div>
+        {imageRotation !== 0 && (
+          <span className="font-mono text-xs text-purple">{imageRotation}°</span>
+        )}
+      </div>
+
+      {/* Flip */}
+      <div className="flex items-center gap-3">
+        <span className="font-mono text-xs text-muted w-16 shrink-0">
+          mirror
+        </span>
+        <button
+          onClick={() => onFlipChange(!flipped)}
+          className={`font-mono text-xs px-3 py-1 rounded-md border transition-colors duration-150 cursor-pointer ${
+            flipped
+              ? "border-purple bg-purple/10 text-purple"
+              : "border-overlay text-muted hover:text-fg hover:bg-overlay"
+          }`}
+        >
+          ↔ horizontal
+        </button>
+      </div>
+
       {/* Format */}
       <div className="flex items-center gap-3">
         <span className="font-mono text-xs text-muted w-16 shrink-0">

@@ -19,19 +19,23 @@ interface WatermarkPanelProps {
   // image
   watermarkUrl: string | null;
   size: number;
+  flipped: boolean;
   // text
   text: string;
   fontSize: number;
   color: string;
+  rotation: number;
   // shared
   opacity: number;
   onTypeChange: (t: WatermarkType) => void;
   onDrop: (e: DragEvent<HTMLDivElement>) => void;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onSizeChange: (s: number) => void;
+  onFlipChange: (f: boolean) => void;
   onTextChange: (t: string) => void;
   onFontSizeChange: (s: number) => void;
   onColorChange: (c: string) => void;
+  onRotationChange: (r: number) => void;
   onOpacityChange: (o: number) => void;
   onRemove: () => void;
 }
@@ -42,17 +46,21 @@ export const WatermarkPanel = ({
   type,
   watermarkUrl,
   size,
+  flipped,
   text,
   fontSize,
   color,
+  rotation,
   opacity,
   onTypeChange,
   onDrop,
   onChange,
   onSizeChange,
+  onFlipChange,
   onTextChange,
   onFontSizeChange,
   onColorChange,
+  onRotationChange,
   onOpacityChange,
   onRemove,
 }: WatermarkPanelProps) => {
@@ -113,22 +121,57 @@ export const WatermarkPanel = ({
               </span>
             </div>
           ) : (
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-xs text-muted w-16 shrink-0">
-                size
-              </span>
-              <input
-                type="range"
-                min={5}
-                max={80}
-                value={size}
-                onChange={(e) => onSizeChange(Number(e.target.value))}
-                className="flex-1 h-1 accent-yellow cursor-pointer"
-              />
-              <span className="font-mono text-xs text-fg w-8 text-right">
-                {size}%
-              </span>
-            </div>
+            <>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs text-muted w-16 shrink-0">
+                  size
+                </span>
+                <input
+                  type="range"
+                  min={5}
+                  max={80}
+                  value={size}
+                  onChange={(e) => onSizeChange(Number(e.target.value))}
+                  className="flex-1 h-1 accent-yellow cursor-pointer"
+                />
+                <span className="font-mono text-xs text-fg w-8 text-right">
+                  {size}%
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs text-muted w-16 shrink-0">
+                  rotation
+                </span>
+                <input
+                  type="range"
+                  min={-180}
+                  max={180}
+                  value={rotation}
+                  onChange={(e) => onRotationChange(Number(e.target.value))}
+                  className="flex-1 h-1 accent-yellow cursor-pointer"
+                />
+                <span className="font-mono text-xs text-fg w-8 text-right">
+                  {rotation}°
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs text-muted w-16 shrink-0">
+                  mirror
+                </span>
+                <button
+                  onClick={() => onFlipChange(!flipped)}
+                  className={`font-mono text-xs px-3 py-1 rounded-md border transition-colors duration-150 cursor-pointer ${
+                    flipped
+                      ? "border-yellow bg-yellow/10 text-yellow"
+                      : "border-overlay text-muted hover:text-fg hover:bg-overlay"
+                  }`}
+                >
+                  ↔ horizontal
+                </button>
+              </div>
+            </>
           )}
         </>
       )}
@@ -216,6 +259,24 @@ export const WatermarkPanel = ({
                   })}
                 </div>
               </div>
+
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs text-muted w-16 shrink-0">
+                  rotation
+                </span>
+                <input
+                  type="range"
+                  min={-180}
+                  max={180}
+                  value={rotation}
+                  onChange={(e) => onRotationChange(Number(e.target.value))}
+                  className="flex-1 h-1 accent-yellow cursor-pointer"
+                />
+                <span className="font-mono text-xs text-fg w-8 text-right">
+                  {rotation}°
+                </span>
+              </div>
+
             </>
           )}
         </>

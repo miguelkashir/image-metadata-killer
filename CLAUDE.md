@@ -67,3 +67,29 @@ No `tailwind.config.js`. Theme customization goes in CSS via `@theme inline {}` 
 ## ESLint 9
 
 Uses flat config (`eslint.config.mjs`) with `defineConfig`. Run via `pnpm lint` which calls `eslint` directly (not `next lint`). Config spreads `eslint-config-next/core-web-vitals` and `eslint-config-next/typescript`.
+
+## App overview
+
+A client-side image tool. No backend. All processing happens in the browser via Canvas API.
+
+**Features built:**
+- Upload via drag & drop or file picker
+- Metadata inspection and stripping on export
+- Output format (JPEG / PNG / WebP), quality slider, resolution presets (aspect-ratio aware)
+- Download clean image + copy to clipboard (always PNG for clipboard)
+- Image transforms: horizontal mirror, 90° step rotation (↺ / ↻)
+- Watermark — image or text, draggable on preview, size/opacity/rotation (-180°→180°) sliders; image watermark also has mirror toggle
+- Size comparison after download
+
+**Key files:**
+- `app/hooks/useImageDownload.ts` — all canvas logic lives here (`buildBlob`); handles format, quality, resize, flip, rotation, watermark compositing
+- `app/hooks/useWatermark.ts` — watermark state (type, url, text, position, size, opacity, rotation, flip, color, fontSize)
+- `app/hooks/useFileHandler.ts` — file input, drag-and-drop, dimensions
+- `app/components/ImagePreview.tsx` — preview with CSS transforms and draggable watermark overlay; `getContainedRect` maps the `object-contain` image area for correct watermark positioning
+- `app/components/OutputOptions.tsx` — settings panel (rotate, mirror, format, quality, resize presets)
+- `app/components/WatermarkPanel.tsx` — watermark controls panel
+
+**Pending (next session):**
+- When rotating the uploaded image, the blurred backdrop should rotate with it
+- Rotated image (90°/270°) should scale to fill the canvas width instead of leaving bars
+- Settings panel should use cyan (`text-cyan`, `border-cyan`, `bg-cyan/...`) not purple — purple is reserved for the download button only

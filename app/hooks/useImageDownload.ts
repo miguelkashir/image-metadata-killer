@@ -9,6 +9,8 @@ export type WatermarkOptions =
       position: WatermarkPosition;
       size: number;
       opacity: number;
+      rotation: number;
+      flipped: boolean;
     }
   | {
       type: "text";
@@ -17,12 +19,17 @@ export type WatermarkOptions =
       fontSize: number;
       color: string;
       opacity: number;
+      rotation: number;
     };
+
+export type ImageRotation = 0 | 90 | 180 | 270;
 
 interface UseImageDownloadReturn {
   outputFormat: OutputFormat;
   quality: number;
   targetWidth: number | null;
+  flipped: boolean;
+  imageRotation: ImageRotation;
   cleanSize: number | null;
   downloading: boolean;
   copying: boolean;
@@ -30,6 +37,10 @@ interface UseImageDownloadReturn {
   setOutputFormat: (fmt: OutputFormat) => void;
   setQuality: (q: number) => void;
   setTargetWidth: (w: number | null) => void;
+  setFlipped: (f: boolean) => void;
+  resetFlipped: () => void;
+  rotateImage: (dir: "cw" | "ccw") => void;
+  resetImageRotation: () => void;
   handleDownload: (
     file: File,
     imageUrl: string,
@@ -79,6 +90,8 @@ async function buildBlob(
   targetWidth: number | null,
   mimeType: string,
   quality: number | undefined,
+  flipped: boolean,
+  imageRotation: ImageRotation,
   watermark?: WatermarkOptions,
 ): Promise<Blob> {
   const img = new window.Image();
@@ -93,19 +106,35 @@ async function buildBlob(
     ? Math.round((targetWidth / img.naturalWidth) * img.naturalHeight)
     : img.naturalHeight;
 
+  // For 90/270° the output canvas has swapped dimensions
+  const isSwapped = imageRotation === 90 || imageRotation === 270;
+  const canvasW = isSwapped ? outHeight : outWidth;
+  const canvasH = isSwapped ? outWidth : outHeight;
+
   const canvas = document.createElement("canvas");
-  canvas.width = outWidth;
-  canvas.height = outHeight;
+  canvas.width = canvasW;
+  canvas.height = canvasH;
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     throw new Error("Canvas not supported");
   }
 
-  ctx.drawImage(img, 0, 0, outWidth, outHeight);
+  // Draw main image using center-based transform so rotation + flip compose cleanly
+  ctx.save();
+  ctx.translate(canvasW / 2, canvasH / 2);
+
+  if (flipped) {
+    ctx.scale(-1, 1);
+  }
+
+  ctx.rotate((imageRotation * Math.PI) / 180);
+  ctx.drawImage(img, -outWidth / 2, -outHeight / 2, outWidth, outHeight);
+  ctx.restore();
 
   if (watermark) {
-    const cx = Math.round((watermark.position.x / 100) * outWidth);
-    const cy = Math.round((watermark.position.y / 100) * outHeight);
+    // Watermark position is in output (canvas) space
+    const cx = Math.round((watermark.position.x / 100) * canvasW);
+    const cy = Math.round((watermark.position.y / 100) * canvasH);
 
     if (watermark.type === "image") {
       const wmImg = new window.Image();
@@ -118,18 +147,22 @@ async function buildBlob(
       const wmHeight = Math.round(
         (wmWidth / wmImg.naturalWidth) * wmImg.naturalHeight,
       );
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate((watermark.rotation * Math.PI) / 180);
+
+      if (watermark.flipped) {
+        ctx.scale(-1, 1);
+      }
+
       ctx.globalAlpha = watermark.opacity / 100;
-      ctx.drawImage(
-        wmImg,
-        cx - wmWidth / 2,
-        cy - wmHeight / 2,
-        wmWidth,
-        wmHeight,
-      );
-      ctx.globalAlpha = 1;
+      ctx.drawImage(wmImg, -wmWidth / 2, -wmHeight / 2, wmWidth, wmHeight);
+      ctx.restore();
     } else {
       const fontPx = Math.round((watermark.fontSize / 100) * outWidth);
       ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate((watermark.rotation * Math.PI) / 180);
       ctx.font = `bold ${fontPx}px sans-serif`;
       ctx.fillStyle = watermark.color;
       ctx.globalAlpha = watermark.opacity / 100;
@@ -139,7 +172,7 @@ async function buildBlob(
       const lineHeight = fontPx * 1.2;
       const totalHeight = (lines.length - 1) * lineHeight;
       lines.forEach((line, i) => {
-        ctx.fillText(line, cx, cy - totalHeight / 2 + i * lineHeight);
+        ctx.fillText(line, 0, -totalHeight / 2 + i * lineHeight);
       });
       ctx.restore();
     }
@@ -161,6 +194,8 @@ export function useImageDownload(
     useState<OutputFormat>(initialFormat);
   const [quality, setQualityState] = useState(100);
   const [targetWidth, setTargetWidthState] = useState<number | null>(null);
+  const [flipped, setFlippedState] = useState(false);
+  const [imageRotation, setImageRotationState] = useState<ImageRotation>(0);
   const [cleanSize, setCleanSize] = useState<number | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [copying, setCopying] = useState(false);
@@ -182,6 +217,20 @@ export function useImageDownload(
     setCleanSize(null);
   }, []);
 
+  const setFlipped = useCallback((f: boolean) => {
+    setFlippedState(f);
+    setCleanSize(null);
+  }, []);
+
+  const rotateImage = useCallback((dir: "cw" | "ccw") => {
+    setImageRotationState((prev) => {
+      const delta = dir === "cw" ? 90 : 270;
+
+      return ((prev + delta) % 360) as ImageRotation;
+    });
+    setCleanSize(null);
+  }, []);
+
   const handleDownload = useCallback(
     async (file: File, imageUrl: string, watermark?: WatermarkOptions) => {
       setDownloading(true);
@@ -195,6 +244,8 @@ export function useImageDownload(
           targetWidth,
           mimeType,
           qualityArg,
+          flipped,
+          imageRotation,
           watermark,
         );
 
@@ -213,7 +264,7 @@ export function useImageDownload(
         setDownloading(false);
       }
     },
-    [outputFormat, quality, targetWidth],
+    [outputFormat, quality, targetWidth, flipped, imageRotation],
   );
 
   const handleCopy = useCallback(
@@ -226,6 +277,8 @@ export function useImageDownload(
           targetWidth,
           "image/png",
           undefined,
+          flipped,
+          imageRotation,
           watermark,
         );
         await navigator.clipboard.write([
@@ -242,7 +295,7 @@ export function useImageDownload(
         setCopying(false);
       }
     },
-    [targetWidth],
+    [targetWidth, flipped, imageRotation],
   );
 
   const resetCleanSize = useCallback(() => setCleanSize(null), []);
@@ -250,11 +303,22 @@ export function useImageDownload(
     setTargetWidthState(null);
     setCleanSize(null);
   }, []);
+  const resetFlipped = useCallback(() => {
+    setFlippedState(false);
+    setCleanSize(null);
+  }, []);
+
+  const resetImageRotation = useCallback(() => {
+    setImageRotationState(0);
+    setCleanSize(null);
+  }, []);
 
   return {
     outputFormat,
     quality,
     targetWidth,
+    flipped,
+    imageRotation,
     cleanSize,
     downloading,
     copying,
@@ -262,6 +326,10 @@ export function useImageDownload(
     setOutputFormat,
     setQuality,
     setTargetWidth,
+    setFlipped,
+    resetFlipped,
+    rotateImage,
+    resetImageRotation,
     handleDownload,
     handleCopy,
     resetCleanSize,
