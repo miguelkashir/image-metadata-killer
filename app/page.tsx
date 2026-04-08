@@ -23,6 +23,26 @@ function formatValue(value: unknown): string {
 }
 
 type Metadata = Record<string, unknown>;
+type OutputFormat = "jpeg" | "png" | "webp";
+
+// Keys that are structural to the file format and cannot be stripped.
+// Their presence doesn't mean the image carries personal metadata.
+const STRUCTURAL_KEYS = new Set([
+  // PNG IHDR chunk
+  "ImageWidth", "ImageHeight", "BitDepth", "ColorType",
+  "Compression", "Filter", "Interlace",
+  // JPEG / JFIF
+  "JFIFVersion", "ResolutionUnit", "XResolution", "YResolution",
+  "ThumbnailWidth", "ThumbnailHeight",
+  // Common encoding descriptors
+  "ColorComponents", "EncodingProcess", "YCbCrSubSampling",
+]);
+
+function defaultFormat(mimeType: string): OutputFormat {
+  if (mimeType === "image/png") return "png";
+  if (mimeType === "image/webp") return "webp";
+  return "jpeg";
+}
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
@@ -33,6 +53,10 @@ export default function Home() {
   const [showMetadata, setShowMetadata] = useState(false);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [downloading, setDownloading] = useState(false);
+
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>("jpeg");
+  const [quality, setQuality] = useState(92);
+  const [cleanSize, setCleanSize] = useState<number | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -45,6 +69,8 @@ export default function Home() {
     setFile(f);
     setMetadata(null);
     setShowMetadata(false);
+    setOutputFormat(defaultFormat(f.type));
+    setCleanSize(null);
   }, []);
 
   const handleDrop = useCallback(
@@ -68,6 +94,7 @@ export default function Home() {
     setImageUrl(null);
     setMetadata(null);
     setShowMetadata(false);
+    setCleanSize(null);
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -119,27 +146,19 @@ export default function Home() {
       if (!ctx) throw new Error("Canvas not supported");
       ctx.drawImage(img, 0, 0);
 
-      const mimeType =
-        file.type === "image/png"
-          ? "image/png"
-          : file.type === "image/webp"
-          ? "image/webp"
-          : "image/jpeg";
-      const ext =
-        mimeType === "image/png"
-          ? "png"
-          : mimeType === "image/webp"
-          ? "webp"
-          : "jpg";
+      const mimeType = `image/${outputFormat}` as const;
+      const ext = outputFormat === "jpeg" ? "jpg" : outputFormat;
 
       const blob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob(
           (b) =>
             b ? resolve(b) : reject(new Error("Failed to encode image")),
           mimeType,
-          0.95
+          outputFormat === "png" ? undefined : quality / 100
         );
       });
+
+      setCleanSize(blob.size);
 
       const baseName = file.name.replace(/\.[^/.]+$/, "");
       const url = URL.createObjectURL(blob);
@@ -156,6 +175,7 @@ export default function Home() {
   };
 
   const metadataEntries = metadata ? Object.entries(metadata) : [];
+  const hasPersonalMetadata = metadataEntries.some(([key]) => !STRUCTURAL_KEYS.has(key));
 
   return (
     <div className="flex flex-col min-h-screen text-fg font-sans">
@@ -255,18 +275,57 @@ export default function Home() {
               </p>
               <button
                 onClick={reset}
-                className="font-mono text-xs text-muted hover:text-red transition-colors shrink-0"
+                className="font-mono text-xs text-red hover:text-red/70 transition-colors shrink-0 cursor-pointer"
               >
-                × change
+                × change image
               </button>
             </div>
 
+            {/* Output options */}
+            <div className="w-full bg-surface rounded-xl border border-overlay px-4 py-3 mb-4 space-y-3">
+              {/* Format selector */}
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs text-muted w-16 shrink-0">format</span>
+                <div className="flex gap-1.5">
+                  {(["jpeg", "png", "webp"] as OutputFormat[]).map((fmt) => (
+                    <button
+                      key={fmt}
+                      onClick={() => { setOutputFormat(fmt); setCleanSize(null); }}
+                      className={`font-mono text-xs px-3 py-1 rounded-md transition-colors duration-150 cursor-pointer ${
+                        outputFormat === fmt
+                          ? "bg-purple text-base"
+                          : "text-muted hover:text-fg hover:bg-overlay"
+                      }`}
+                    >
+                      {fmt.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quality slider — hidden for PNG */}
+              {outputFormat !== "png" && (
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-xs text-muted w-16 shrink-0">quality</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={100}
+                    value={quality}
+                    onChange={(e) => { setQuality(Number(e.target.value)); setCleanSize(null); }}
+                    className="flex-1 h-1 accent-purple cursor-pointer"
+                  />
+                  <span className="font-mono text-xs text-fg w-8 text-right">{quality}%</span>
+                </div>
+              )}
+            </div>
+
             {/* Action buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 w-full mb-6">
+            <div className="flex flex-col sm:flex-row gap-3 w-full mb-4">
               <button
                 onClick={handleDisplayMetadata}
                 disabled={loadingMetadata}
-                className={`flex-1 font-mono text-sm py-3 px-5 rounded-lg border transition-colors duration-150 ${
+                className={`flex-1 font-mono text-sm py-3 px-5 rounded-lg border transition-colors duration-150 cursor-pointer ${
                   showMetadata
                     ? "border-cyan bg-cyan/10 text-cyan"
                     : "border-overlay text-cyan hover:bg-surface"
@@ -281,11 +340,29 @@ export default function Home() {
               <button
                 onClick={handleDownload}
                 disabled={downloading}
-                className="flex-1 font-mono text-sm py-3 px-5 rounded-lg bg-purple text-base font-semibold hover:opacity-90 transition-opacity duration-150 disabled:opacity-50 disabled:cursor-wait"
+                className="flex-1 font-mono text-sm py-3 px-5 rounded-lg bg-purple text-base font-semibold hover:opacity-90 transition-opacity duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-wait"
               >
                 {downloading ? "processing..." : "download clean image"}
               </button>
             </div>
+
+            {/* Size comparison */}
+            {cleanSize !== null && file && (
+              <div className="w-full flex items-center justify-center gap-3 font-mono text-xs mb-4">
+                <span className="text-muted">{formatBytes(file.size)}</span>
+                <span className="text-overlay">→</span>
+                <span className="text-green">{formatBytes(cleanSize)}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs ${
+                  cleanSize < file.size
+                    ? "bg-green/10 text-green"
+                    : "bg-orange/10 text-orange"
+                }`}>
+                  {cleanSize < file.size
+                    ? `↓ ${Math.round(((file.size - cleanSize) / file.size) * 100)}% smaller`
+                    : `↑ ${Math.round(((cleanSize - file.size) / file.size) * 100)}% larger`}
+                </span>
+              </div>
+            )}
 
             {/* Metadata panel */}
             {showMetadata && (
@@ -303,30 +380,45 @@ export default function Home() {
                 </div>
 
                 {metadataEntries.length === 0 ? (
-                  <div className="px-4 py-8 text-center">
-                    <p className="font-mono text-sm text-green">
-                      ✓ no metadata found
+                  <div className="px-6 py-8 text-center space-y-2">
+                    <p className="font-mono text-sm text-green">✓ no metadata found</p>
+                    <p className="font-mono text-xs text-muted leading-relaxed">
+                      This image carries only the minimal data required by the format — no camera info, no GPS, no timestamps.
                     </p>
-                    <p className="font-mono text-xs text-muted mt-1">
-                      this image is already clean
+                    <p className="font-mono text-xs text-muted/40 leading-relaxed pt-1">
+                      Did we strip this previously? No idea — we keep absolutely nothing. That&apos;s the point.
                     </p>
                   </div>
                 ) : (
-                  <div className="max-h-72 overflow-y-auto divide-y divide-overlay/50">
-                    {metadataEntries.map(([key, value]) => (
-                      <div
-                        key={key}
-                        className="flex items-start gap-4 px-4 py-2.5 hover:bg-overlay/30 transition-colors"
-                      >
-                        <span className="font-mono text-xs text-muted shrink-0 w-40 pt-px truncate">
-                          {key}
-                        </span>
-                        <span className="font-mono text-xs text-fg break-all">
-                          {formatValue(value)}
-                        </span>
+                  <>
+                    <div className="max-h-72 overflow-y-auto divide-y divide-overlay/50">
+                      {metadataEntries.map(([key, value]) => (
+                        <div
+                          key={key}
+                          className="flex items-start gap-4 px-4 py-2.5 hover:bg-overlay/30 transition-colors"
+                        >
+                          <span className="font-mono text-xs text-muted shrink-0 w-40 pt-px truncate">
+                            {key}
+                          </span>
+                          <span className="font-mono text-xs text-fg break-all">
+                            {formatValue(value)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {!hasPersonalMetadata && (
+                      <div className="px-6 py-4 border-t border-overlay text-center space-y-1">
+                        <p className="font-mono text-xs text-green">✓ no personal metadata</p>
+                        <p className="font-mono text-xs text-muted leading-relaxed">
+                          The fields above are structural — baked into the file format itself and impossible to remove. No camera info, no GPS, no timestamps.
+                        </p>
+                        <p className="font-mono text-xs text-muted/40 leading-relaxed pt-0.5">
+                          Did we strip this previously? No idea — we keep absolutely nothing. That&apos;s the point.
+                        </p>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

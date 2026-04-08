@@ -39,3 +39,7 @@ body {
   background-color: var(--base);
   color: var(--fg);
 }
+
+input[type="range"] {
+  accent-color: var(--purple);
+}
