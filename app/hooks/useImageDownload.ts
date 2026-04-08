@@ -4,12 +4,15 @@ import type { OutputFormat } from "@/app/types/image";
 interface UseImageDownloadReturn {
   outputFormat: OutputFormat;
   quality: number;
+  scale: number;
   cleanSize: number | null;
   downloading: boolean;
   setOutputFormat: (fmt: OutputFormat) => void;
   setQuality: (q: number) => void;
+  setScale: (s: number) => void;
   handleDownload: (file: File, imageUrl: string) => Promise<void>;
   resetCleanSize: () => void;
+  resetScale: () => void;
 }
 
 export function useImageDownload(
@@ -17,6 +20,7 @@ export function useImageDownload(
 ): UseImageDownloadReturn {
   const [outputFormat, setOutputFormatState] = useState<OutputFormat>(initialFormat);
   const [quality, setQualityState] = useState(92);
+  const [scale, setScaleState] = useState(100);
   const [cleanSize, setCleanSize] = useState<number | null>(null);
   const [downloading, setDownloading] = useState(false);
 
@@ -27,6 +31,11 @@ export function useImageDownload(
 
   const setQuality = useCallback((q: number) => {
     setQualityState(q);
+    setCleanSize(null);
+  }, []);
+
+  const setScale = useCallback((s: number) => {
+    setScaleState(s);
     setCleanSize(null);
   }, []);
 
@@ -42,14 +51,15 @@ export function useImageDownload(
         });
 
         const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
+        canvas.width = Math.round(img.naturalWidth * (scale / 100));
+        canvas.height = Math.round(img.naturalHeight * (scale / 100));
         const ctx = canvas.getContext("2d");
 
         if (!ctx) {
           throw new Error("Canvas not supported");
         }
-        ctx.drawImage(img, 0, 0);
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
         const mimeType = `image/${outputFormat}` as const;
         const ext = outputFormat === "jpeg" ? "jpg" : outputFormat;
@@ -78,19 +88,27 @@ export function useImageDownload(
         setDownloading(false);
       }
     },
-    [outputFormat, quality],
+    [outputFormat, quality, scale],
   );
 
   const resetCleanSize = useCallback(() => setCleanSize(null), []);
 
+  const resetScale = useCallback(() => {
+    setScaleState(100);
+    setCleanSize(null);
+  }, []);
+
   return {
     outputFormat,
     quality,
+    scale,
     cleanSize,
     downloading,
     setOutputFormat,
     setQuality,
+    setScale,
     handleDownload,
     resetCleanSize,
+    resetScale,
   };
 }

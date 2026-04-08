@@ -21,6 +21,7 @@ export default function Home() {
     (fmt: OutputFormat) => {
       metadataHook.reset();
       downloadHook.resetCleanSize();
+      downloadHook.resetScale();
       downloadHook.setOutputFormat(fmt);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -30,9 +31,10 @@ export default function Home() {
   const fileHandler = useFileHandler(handleFileSelected, () => {
     metadataHook.reset();
     downloadHook.resetCleanSize();
+    downloadHook.resetScale();
   });
 
-  const { file, imageUrl } = fileHandler;
+  const { file, imageUrl, dimensions } = fileHandler;
 
   return (
     <div className="flex flex-col min-h-screen text-fg font-sans">
@@ -64,8 +66,11 @@ export default function Home() {
             <OutputOptions
               outputFormat={downloadHook.outputFormat}
               quality={downloadHook.quality}
+              scale={downloadHook.scale}
+              dimensions={dimensions}
               onFormatChange={downloadHook.setOutputFormat}
               onQualityChange={downloadHook.setQuality}
+              onScaleChange={downloadHook.setScale}
             />
 
             <ActionButtons

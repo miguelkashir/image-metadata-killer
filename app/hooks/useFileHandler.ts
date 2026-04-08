@@ -2,9 +2,15 @@ import { useState, useRef, useCallback, DragEvent, ChangeEvent } from "react";
 import { defaultFormat } from "@/app/constants/metadata";
 import type { OutputFormat } from "@/app/types/image";
 
+export interface ImageDimensions {
+  width: number;
+  height: number;
+}
+
 interface UseFileHandlerReturn {
   file: File | null;
   imageUrl: string | null;
+  dimensions: ImageDimensions | null;
   isDragging: boolean;
   inputRef: React.RefObject<HTMLInputElement | null>;
   handleDrop: (e: DragEvent<HTMLDivElement>) => void;
@@ -21,6 +27,7 @@ export function useFileHandler(
 ): UseFileHandlerReturn {
   const [file, setFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [dimensions, setDimensions] = useState<ImageDimensions | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [defaultOutputFormat, setDefaultOutputFormat] =
     useState<OutputFormat>("jpeg");
@@ -32,14 +39,23 @@ export function useFileHandler(
         return;
       }
 
+      const url = URL.createObjectURL(f);
+
       setImageUrl((prev) => {
         if (prev) {
           URL.revokeObjectURL(prev);
         }
 
-        return URL.createObjectURL(f);
+        return url;
       });
       setFile(f);
+      setDimensions(null);
+
+      const img = new window.Image();
+      img.onload = () => {
+        setDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+      };
+      img.src = url;
 
       const fmt = defaultFormat(f.type);
       setDefaultOutputFormat(fmt);
@@ -88,6 +104,7 @@ export function useFileHandler(
 
     setFile(null);
     setImageUrl(null);
+    setDimensions(null);
 
     if (inputRef.current) {
       inputRef.current.value = "";
@@ -99,6 +116,7 @@ export function useFileHandler(
   return {
     file,
     imageUrl,
+    dimensions,
     isDragging,
     inputRef,
     handleDrop,
