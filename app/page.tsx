@@ -11,11 +11,14 @@ import { MetadataPanel } from "./components/MetadataPanel";
 import { useFileHandler } from "./hooks/useFileHandler";
 import { useMetadata } from "./hooks/useMetadata";
 import { useImageDownload } from "./hooks/useImageDownload";
+import { useWatermark } from "./hooks/useWatermark";
+import { WatermarkPanel } from "./components/WatermarkPanel";
 import type { OutputFormat } from "./types/image";
 
 export default function Home() {
   const metadataHook = useMetadata();
   const downloadHook = useImageDownload("jpeg");
+  const watermark = useWatermark();
 
   const handleFileSelected = useCallback(
     (fmt: OutputFormat) => {
@@ -32,6 +35,7 @@ export default function Home() {
     metadataHook.reset();
     downloadHook.resetCleanSize();
     downloadHook.resetTargetWidth();
+    watermark.reset();
   });
 
   const { file, imageUrl, dimensions } = fileHandler;
@@ -61,6 +65,10 @@ export default function Home() {
               file={file}
               imageUrl={imageUrl!}
               onReset={fileHandler.reset}
+              watermarkUrl={watermark.watermarkUrl}
+              watermarkPosition={watermark.position}
+              watermarkSize={watermark.size}
+              watermarkOpacity={watermark.opacity}
             />
 
             <OutputOptions
@@ -71,6 +79,19 @@ export default function Home() {
               onFormatChange={downloadHook.setOutputFormat}
               onQualityChange={downloadHook.setQuality}
               onTargetWidthChange={downloadHook.setTargetWidth}
+            />
+
+            <WatermarkPanel
+              watermarkUrl={watermark.watermarkUrl}
+              size={watermark.size}
+              opacity={watermark.opacity}
+              onDrop={watermark.handleWatermarkDrop}
+              onChange={watermark.handleWatermarkChange}
+              onSizeChange={watermark.setSize}
+              onOpacityChange={watermark.setOpacity}
+              onRemove={() => {
+                watermark.clearWatermark();
+              }}
             />
 
             <ActionButtons
