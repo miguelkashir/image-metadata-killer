@@ -21,10 +21,13 @@ export function useMetadata(): UseMetadataReturn {
     async (file: File) => {
       if (showMetadata) {
         setShowMetadata(false);
+
         return;
       }
+
       if (metadata) {
         setShowMetadata(true);
+
         return;
       }
 

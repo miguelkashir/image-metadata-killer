@@ -21,5 +21,9 @@ export const formatValue = (value: unknown): string => {
       : value.toFixed(6).replace(/\.?0+$/, "");
   }
 
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+
   return String(value);
 };
