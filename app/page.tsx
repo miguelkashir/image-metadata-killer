@@ -97,7 +97,23 @@ export default function Home() {
               showMetadata={metadataHook.showMetadata}
               loadingMetadata={metadataHook.loadingMetadata}
               downloading={downloadHook.downloading}
+              copying={downloadHook.copying}
+              copied={downloadHook.copied}
               onDisplayMetadata={() => metadataHook.handleDisplayMetadata(file)}
+              onCopy={() =>
+                downloadHook.handleCopy(
+                  file,
+                  imageUrl!,
+                  watermark.watermarkUrl
+                    ? {
+                        url: watermark.watermarkUrl,
+                        position: watermark.position,
+                        size: watermark.size,
+                        opacity: watermark.opacity,
+                      }
+                    : undefined,
+                )
+              }
               onDownload={() =>
                 downloadHook.handleDownload(
                   file,
