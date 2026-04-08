@@ -14,6 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://metakill.app",
+  ),
   title: "MetaKill — Remove Image Metadata Online, Free & Private",
   description:
     "Strip EXIF data, GPS coordinates, camera info, and all hidden metadata from your images instantly. No uploads, no server — everything runs in your browser.",
@@ -26,6 +29,18 @@ export const metadata: Metadata = {
     "online EXIF remover",
     "photo privacy tool",
   ],
+  openGraph: {
+    title: "MetaKill — Remove Image Metadata Online, Free & Private",
+    description:
+      "Strip EXIF data, GPS coordinates, camera info, and all hidden metadata. No uploads, no server — 100% private.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MetaKill — Remove Image Metadata Online, Free & Private",
+    description:
+      "Strip EXIF data, GPS coordinates, camera info, and all hidden metadata. No uploads, no server — 100% private.",
+  },
 };
 
 export default function RootLayout({
