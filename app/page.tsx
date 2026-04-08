@@ -32,6 +32,7 @@ export default function Home() {
   const [metadata, setMetadata] = useState<Metadata | null>(null);
   const [showMetadata, setShowMetadata] = useState(false);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -97,6 +98,60 @@ export default function Home() {
     } finally {
       setLoadingMetadata(false);
       setShowMetadata(true);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!file || !imageUrl) return;
+    setDownloading(true);
+    try {
+      const img = new window.Image();
+      img.src = imageUrl;
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas not supported");
+      ctx.drawImage(img, 0, 0);
+
+      const mimeType =
+        file.type === "image/png"
+          ? "image/png"
+          : file.type === "image/webp"
+          ? "image/webp"
+          : "image/jpeg";
+      const ext =
+        mimeType === "image/png"
+          ? "png"
+          : mimeType === "image/webp"
+          ? "webp"
+          : "jpg";
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (b) =>
+            b ? resolve(b) : reject(new Error("Failed to encode image")),
+          mimeType,
+          0.95
+        );
+      });
+
+      const baseName = file.name.replace(/\.[^/.]+$/, "");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${baseName}-clean.${ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download failed:", err);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -224,10 +279,11 @@ export default function Home() {
                   : "display metadata"}
               </button>
               <button
-                disabled
-                className="flex-1 font-mono text-sm py-3 px-5 rounded-lg bg-purple text-base font-semibold opacity-40 cursor-not-allowed"
+                onClick={handleDownload}
+                disabled={downloading}
+                className="flex-1 font-mono text-sm py-3 px-5 rounded-lg bg-purple text-base font-semibold hover:opacity-90 transition-opacity duration-150 disabled:opacity-50 disabled:cursor-wait"
               >
-                download clean image
+                {downloading ? "processing..." : "download clean image"}
               </button>
             </div>
 
