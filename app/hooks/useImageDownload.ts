@@ -2,12 +2,22 @@ import { useState, useCallback, useRef } from "react";
 import type { OutputFormat } from "@/app/types/image";
 import type { WatermarkPosition } from "@/app/hooks/useWatermark";
 
-export interface WatermarkOptions {
-  url: string;
-  position: WatermarkPosition;
-  size: number;
-  opacity: number;
-}
+export type WatermarkOptions =
+  | {
+      type: "image";
+      url: string;
+      position: WatermarkPosition;
+      size: number;
+      opacity: number;
+    }
+  | {
+      type: "text";
+      text: string;
+      position: WatermarkPosition;
+      fontSize: number;
+      color: string;
+      opacity: number;
+    };
 
 interface UseImageDownloadReturn {
   outputFormat: OutputFormat;
@@ -34,6 +44,36 @@ interface UseImageDownloadReturn {
   resetTargetWidth: () => void;
 }
 
+function getWrappedLines(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string[] {
+  const result: string[] = [];
+  for (const paragraph of text.split("\n")) {
+    if (paragraph === "") {
+      result.push("");
+      continue;
+    }
+    const words = paragraph.split(" ");
+    let line = "";
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        result.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) {
+      result.push(line);
+    }
+  }
+
+  return result;
+}
+
 async function buildBlob(
   imageUrl: string,
   targetWidth: number | null,
@@ -57,31 +97,52 @@ async function buildBlob(
   canvas.width = outWidth;
   canvas.height = outHeight;
   const ctx = canvas.getContext("2d");
-
-  if (!ctx) throw new Error("Canvas not supported");
+  if (!ctx) {
+    throw new Error("Canvas not supported");
+  }
 
   ctx.drawImage(img, 0, 0, outWidth, outHeight);
 
   if (watermark) {
-    const wmImg = new window.Image();
-    wmImg.src = watermark.url;
-    await new Promise<void>((resolve, reject) => {
-      wmImg.onload = () => resolve();
-      wmImg.onerror = reject;
-    });
+    const cx = Math.round((watermark.position.x / 100) * outWidth);
+    const cy = Math.round((watermark.position.y / 100) * outHeight);
 
-    const wmWidth = Math.round((watermark.size / 100) * outWidth);
-    const wmHeight = Math.round(
-      (wmWidth / wmImg.naturalWidth) * wmImg.naturalHeight,
-    );
-    const wmX =
-      Math.round((watermark.position.x / 100) * outWidth) - wmWidth / 2;
-    const wmY =
-      Math.round((watermark.position.y / 100) * outHeight) - wmHeight / 2;
-
-    ctx.globalAlpha = watermark.opacity / 100;
-    ctx.drawImage(wmImg, wmX, wmY, wmWidth, wmHeight);
-    ctx.globalAlpha = 1;
+    if (watermark.type === "image") {
+      const wmImg = new window.Image();
+      wmImg.src = watermark.url;
+      await new Promise<void>((resolve, reject) => {
+        wmImg.onload = () => resolve();
+        wmImg.onerror = reject;
+      });
+      const wmWidth = Math.round((watermark.size / 100) * outWidth);
+      const wmHeight = Math.round(
+        (wmWidth / wmImg.naturalWidth) * wmImg.naturalHeight,
+      );
+      ctx.globalAlpha = watermark.opacity / 100;
+      ctx.drawImage(
+        wmImg,
+        cx - wmWidth / 2,
+        cy - wmHeight / 2,
+        wmWidth,
+        wmHeight,
+      );
+      ctx.globalAlpha = 1;
+    } else {
+      const fontPx = Math.round((watermark.fontSize / 100) * outWidth);
+      ctx.save();
+      ctx.font = `bold ${fontPx}px sans-serif`;
+      ctx.fillStyle = watermark.color;
+      ctx.globalAlpha = watermark.opacity / 100;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const lines = getWrappedLines(ctx, watermark.text, outWidth);
+      const lineHeight = fontPx * 1.2;
+      const totalHeight = (lines.length - 1) * lineHeight;
+      lines.forEach((line, i) => {
+        ctx.fillText(line, cx, cy - totalHeight / 2 + i * lineHeight);
+      });
+      ctx.restore();
+    }
   }
 
   return new Promise<Blob>((resolve, reject) => {
@@ -127,8 +188,7 @@ export function useImageDownload(
       try {
         const mimeType = `image/${outputFormat}` as const;
         const ext = outputFormat === "jpeg" ? "jpg" : outputFormat;
-        const qualityArg =
-          outputFormat === "png" ? undefined : quality / 100;
+        const qualityArg = outputFormat === "png" ? undefined : quality / 100;
 
         const blob = await buildBlob(
           imageUrl,
@@ -159,8 +219,8 @@ export function useImageDownload(
   const handleCopy = useCallback(
     async (file: File, imageUrl: string, watermark?: WatermarkOptions) => {
       setCopying(true);
+
       try {
-        // Clipboard API only reliably supports PNG across browsers
         const blob = await buildBlob(
           imageUrl,
           targetWidth,
@@ -168,12 +228,12 @@ export function useImageDownload(
           undefined,
           watermark,
         );
-
         await navigator.clipboard.write([
           new ClipboardItem({ "image/png": blob }),
         ]);
-
-        if (copiedTimer.current) clearTimeout(copiedTimer.current);
+        if (copiedTimer.current) {
+          clearTimeout(copiedTimer.current);
+        }
         setCopied(true);
         copiedTimer.current = setTimeout(() => setCopied(false), 2000);
       } catch (err) {

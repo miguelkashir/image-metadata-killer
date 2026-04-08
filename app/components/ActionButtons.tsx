@@ -35,6 +35,7 @@ export const ActionButtons = ({
           ? "hide metadata"
           : "display metadata"}
     </button>
+
     <button
       onClick={onCopy}
       disabled={copying || downloading}
@@ -46,6 +47,7 @@ export const ActionButtons = ({
     >
       {copying ? "copying..." : copied ? "copied!" : "copy image"}
     </button>
+
     <button
       onClick={onDownload}
       disabled={downloading || copying}

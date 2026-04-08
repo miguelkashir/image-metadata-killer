@@ -1,14 +1,24 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { formatBytes } from "@/app/utils/formatBytes";
-import type { WatermarkPosition } from "@/app/hooks/useWatermark";
+import type {
+  WatermarkPosition,
+  WatermarkType,
+} from "@/app/hooks/useWatermark";
 
 interface ImagePreviewProps {
   file: File;
   imageUrl: string;
   onReset: () => void;
+  watermarkType?: WatermarkType;
+  // image watermark
   watermarkUrl?: string | null;
-  watermarkPosition?: WatermarkPosition;
   watermarkSize?: number;
+  // text watermark
+  watermarkText?: string;
+  watermarkFontSize?: number;
+  watermarkColor?: string;
+  // shared
+  watermarkPosition?: WatermarkPosition;
   watermarkOpacity?: number;
   onPositionChange?: (pos: WatermarkPosition) => void;
 }
@@ -28,6 +38,7 @@ function getContainedRect(elem: HTMLImageElement): ImageRect {
   );
   const w = naturalWidth * scale;
   const h = naturalHeight * scale;
+
   return {
     x: (clientWidth - w) / 2,
     y: (clientHeight - h) / 2,
@@ -40,14 +51,17 @@ export const ImagePreview = ({
   file,
   imageUrl,
   onReset,
+  watermarkType = "image",
   watermarkUrl,
-  watermarkPosition = { x: 90, y: 90 },
   watermarkSize = 25,
+  watermarkText = "",
+  watermarkFontSize = 5,
+  watermarkColor = "#ffffff",
+  watermarkPosition = { x: 90, y: 90 },
   watermarkOpacity = 80,
   onPositionChange,
 }: ImagePreviewProps) => {
   const imgRef = useRef<HTMLImageElement>(null);
-  const wmImgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [imageRect, setImageRect] = useState<ImageRect | null>(null);
   const dragging = useRef(false);
@@ -60,55 +74,77 @@ export const ImagePreview = ({
 
   useEffect(() => {
     const observer = new ResizeObserver(updateImageRect);
-    if (imgRef.current) observer.observe(imgRef.current);
+    if (imgRef.current) {
+      observer.observe(imgRef.current);
+    }
+
     return () => observer.disconnect();
   }, [updateImageRect]);
 
+  // Clamp using the actual rendered element dimensions so edges stay within the image.
   const posFromPointer = useCallback(
-    (clientX: number, clientY: number): WatermarkPosition | null => {
-      if (!imageRect || !containerRef.current) return null;
-      const cr = containerRef.current.getBoundingClientRect();
-      const x =
-        ((clientX - cr.left - imageRect.x) / imageRect.width) * 100;
-      const y =
-        ((clientY - cr.top - imageRect.y) / imageRect.height) * 100;
+    (
+      clientX: number,
+      clientY: number,
+      elemPxW: number,
+      elemPxH: number,
+    ): WatermarkPosition | null => {
+      if (!imageRect || !containerRef.current) {
+        return null;
+      }
 
-      // Clamp so the watermark edges stay within the image, not just the center.
-      // halfX is watermarkSize/2 (% of image width).
-      // halfY converts that pixel half-size to % of image height via the aspect ratios.
-      const wm = wmImgRef.current;
-      const halfX = watermarkSize / 2;
-      const halfY =
-        wm && wm.naturalWidth > 0
-          ? (halfX * (wm.naturalHeight / wm.naturalWidth) * imageRect.width) /
-            imageRect.height
-          : halfX;
+      const cr = containerRef.current.getBoundingClientRect();
+      const x = ((clientX - cr.left - imageRect.x) / imageRect.width) * 100;
+      const y = ((clientY - cr.top - imageRect.y) / imageRect.height) * 100;
+      const halfX = (elemPxW / 2 / imageRect.width) * 100;
+      const halfY = (elemPxH / 2 / imageRect.height) * 100;
 
       return {
         x: Math.max(halfX, Math.min(100 - halfX, x)),
         y: Math.max(halfY, Math.min(100 - halfY, y)),
       };
     },
-    [imageRect, watermarkSize],
+    [imageRect],
   );
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (!onPositionChange) return;
+      if (!onPositionChange) {
+        return;
+      }
+
       e.preventDefault();
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      const elem = e.currentTarget as HTMLElement;
+      elem.setPointerCapture(e.pointerId);
       dragging.current = true;
-      const pos = posFromPointer(e.clientX, e.clientY);
-      if (pos) onPositionChange(pos);
+      const pos = posFromPointer(
+        e.clientX,
+        e.clientY,
+        elem.offsetWidth,
+        elem.offsetHeight,
+      );
+      if (pos) {
+        onPositionChange(pos);
+      }
     },
     [onPositionChange, posFromPointer],
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
-      if (!dragging.current || !onPositionChange) return;
-      const pos = posFromPointer(e.clientX, e.clientY);
-      if (pos) onPositionChange(pos);
+      if (!dragging.current || !onPositionChange) {
+        return;
+      }
+      const elem = e.currentTarget as HTMLElement;
+      const pos = posFromPointer(
+        e.clientX,
+        e.clientY,
+        elem.offsetWidth,
+        elem.offsetHeight,
+      );
+      if (pos) {
+        onPositionChange(pos);
+      }
     },
     [onPositionChange, posFromPointer],
   );
@@ -117,16 +153,24 @@ export const ImagePreview = ({
     dragging.current = false;
   }, []);
 
-  const wmStyle: React.CSSProperties | undefined =
-    watermarkUrl && imageRect
-      ? {
-          left: imageRect.x + (watermarkPosition.x / 100) * imageRect.width,
-          top: imageRect.y + (watermarkPosition.y / 100) * imageRect.height,
-          transform: "translate(-50%, -50%)",
-          width: (watermarkSize / 100) * imageRect.width,
-          opacity: watermarkOpacity / 100,
-        }
-      : undefined;
+  const sharedDragProps = {
+    draggable: false as const,
+    onPointerDown: handlePointerDown,
+    onPointerMove: handlePointerMove,
+    onPointerUp: handlePointerUp,
+  };
+
+  const wmLeft = imageRect
+    ? imageRect.x + (watermarkPosition.x / 100) * imageRect.width
+    : 0;
+  const wmTop = imageRect
+    ? imageRect.y + (watermarkPosition.y / 100) * imageRect.height
+    : 0;
+
+  const showImageWatermark =
+    watermarkType === "image" && watermarkUrl && imageRect;
+  const showTextWatermark =
+    watermarkType === "text" && watermarkText.trim().length > 0 && imageRect;
 
   return (
     <>
@@ -153,20 +197,45 @@ export const ImagePreview = ({
           onLoad={updateImageRect}
         />
 
-        {/* Watermark overlay */}
-        {watermarkUrl && wmStyle && (
+        {/* Image watermark overlay */}
+        {showImageWatermark && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            ref={wmImgRef}
-            src={watermarkUrl}
+            src={watermarkUrl!}
             alt="watermark"
             className="absolute z-20 cursor-grab active:cursor-grabbing select-none"
-            style={wmStyle}
-            draggable={false}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
+            style={{
+              left: wmLeft,
+              top: wmTop,
+              transform: "translate(-50%, -50%)",
+              width: (watermarkSize / 100) * imageRect!.width,
+              opacity: watermarkOpacity / 100,
+            }}
+            {...sharedDragProps}
           />
+        )}
+
+        {/* Text watermark overlay */}
+        {showTextWatermark && (
+          <div
+            className="absolute z-20 cursor-grab active:cursor-grabbing select-none font-bold"
+            style={{
+              left: wmLeft,
+              top: wmTop,
+              transform: "translate(-50%, -50%)",
+              fontSize: (watermarkFontSize / 100) * imageRect!.width,
+              color: watermarkColor,
+              opacity: watermarkOpacity / 100,
+              fontFamily: "sans-serif",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              textAlign: "center",
+              maxWidth: imageRect!.width,
+            }}
+            {...sharedDragProps}
+          >
+            {watermarkText}
+          </div>
         )}
       </div>
 

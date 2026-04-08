@@ -14,6 +14,7 @@ import { useImageDownload } from "./hooks/useImageDownload";
 import { useWatermark } from "./hooks/useWatermark";
 import { WatermarkPanel } from "./components/WatermarkPanel";
 import type { OutputFormat } from "./types/image";
+import type { WatermarkOptions } from "./hooks/useImageDownload";
 
 export default function Home() {
   const metadataHook = useMetadata();
@@ -40,6 +41,30 @@ export default function Home() {
 
   const { file, imageUrl, dimensions } = fileHandler;
 
+  function buildWatermarkOptions(): WatermarkOptions | undefined {
+    if (watermark.type === "image" && watermark.watermarkUrl) {
+      return {
+        type: "image",
+        url: watermark.watermarkUrl,
+        position: watermark.position,
+        size: watermark.size,
+        opacity: watermark.opacity,
+      };
+    }
+    if (watermark.type === "text" && watermark.text.trim().length > 0) {
+      return {
+        type: "text",
+        text: watermark.text,
+        position: watermark.position,
+        fontSize: watermark.fontSize,
+        color: watermark.color,
+        opacity: watermark.opacity,
+      };
+    }
+
+    return undefined;
+  }
+
   return (
     <div className="flex flex-col min-h-screen text-fg font-sans">
       <header className="w-full max-w-2xl mx-auto px-6 pt-8 pb-4 flex items-center justify-between">
@@ -65,9 +90,13 @@ export default function Home() {
               file={file}
               imageUrl={imageUrl!}
               onReset={fileHandler.reset}
+              watermarkType={watermark.type}
               watermarkUrl={watermark.watermarkUrl}
-              watermarkPosition={watermark.position}
               watermarkSize={watermark.size}
+              watermarkText={watermark.text}
+              watermarkFontSize={watermark.fontSize}
+              watermarkColor={watermark.color}
+              watermarkPosition={watermark.position}
               watermarkOpacity={watermark.opacity}
               onPositionChange={watermark.setPosition}
             />
@@ -83,14 +112,26 @@ export default function Home() {
             />
 
             <WatermarkPanel
+              type={watermark.type}
               watermarkUrl={watermark.watermarkUrl}
               size={watermark.size}
+              text={watermark.text}
+              fontSize={watermark.fontSize}
+              color={watermark.color}
               opacity={watermark.opacity}
+              onTypeChange={watermark.setType}
               onDrop={watermark.handleWatermarkDrop}
               onChange={watermark.handleWatermarkChange}
               onSizeChange={watermark.setSize}
+              onTextChange={watermark.setText}
+              onFontSizeChange={watermark.setFontSize}
+              onColorChange={watermark.setColor}
               onOpacityChange={watermark.setOpacity}
-              onRemove={watermark.clearWatermark}
+              onRemove={
+                watermark.type === "text"
+                  ? watermark.clearText
+                  : watermark.clearWatermark
+              }
             />
 
             <ActionButtons
@@ -104,28 +145,14 @@ export default function Home() {
                 downloadHook.handleCopy(
                   file,
                   imageUrl!,
-                  watermark.watermarkUrl
-                    ? {
-                        url: watermark.watermarkUrl,
-                        position: watermark.position,
-                        size: watermark.size,
-                        opacity: watermark.opacity,
-                      }
-                    : undefined,
+                  buildWatermarkOptions(),
                 )
               }
               onDownload={() =>
                 downloadHook.handleDownload(
                   file,
                   imageUrl!,
-                  watermark.watermarkUrl
-                    ? {
-                        url: watermark.watermarkUrl,
-                        position: watermark.position,
-                        size: watermark.size,
-                        opacity: watermark.opacity,
-                      }
-                    : undefined,
+                  buildWatermarkOptions(),
                 )
               }
             />
