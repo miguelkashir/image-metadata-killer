@@ -21,7 +21,7 @@ export default function Home() {
     (fmt: OutputFormat) => {
       metadataHook.reset();
       downloadHook.resetCleanSize();
-      downloadHook.resetScale();
+      downloadHook.resetTargetWidth();
       downloadHook.setOutputFormat(fmt);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -31,7 +31,7 @@ export default function Home() {
   const fileHandler = useFileHandler(handleFileSelected, () => {
     metadataHook.reset();
     downloadHook.resetCleanSize();
-    downloadHook.resetScale();
+    downloadHook.resetTargetWidth();
   });
 
   const { file, imageUrl, dimensions } = fileHandler;
@@ -66,11 +66,11 @@ export default function Home() {
             <OutputOptions
               outputFormat={downloadHook.outputFormat}
               quality={downloadHook.quality}
-              scale={downloadHook.scale}
+              targetWidth={downloadHook.targetWidth}
               dimensions={dimensions}
               onFormatChange={downloadHook.setOutputFormat}
               onQualityChange={downloadHook.setQuality}
-              onScaleChange={downloadHook.setScale}
+              onTargetWidthChange={downloadHook.setTargetWidth}
             />
 
             <ActionButtons

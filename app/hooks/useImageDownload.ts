@@ -4,15 +4,15 @@ import type { OutputFormat } from "@/app/types/image";
 interface UseImageDownloadReturn {
   outputFormat: OutputFormat;
   quality: number;
-  scale: number;
+  targetWidth: number | null;
   cleanSize: number | null;
   downloading: boolean;
   setOutputFormat: (fmt: OutputFormat) => void;
   setQuality: (q: number) => void;
-  setScale: (s: number) => void;
+  setTargetWidth: (w: number | null) => void;
   handleDownload: (file: File, imageUrl: string) => Promise<void>;
   resetCleanSize: () => void;
-  resetScale: () => void;
+  resetTargetWidth: () => void;
 }
 
 export function useImageDownload(
@@ -20,7 +20,7 @@ export function useImageDownload(
 ): UseImageDownloadReturn {
   const [outputFormat, setOutputFormatState] = useState<OutputFormat>(initialFormat);
   const [quality, setQualityState] = useState(92);
-  const [scale, setScaleState] = useState(100);
+  const [targetWidth, setTargetWidthState] = useState<number | null>(null);
   const [cleanSize, setCleanSize] = useState<number | null>(null);
   const [downloading, setDownloading] = useState(false);
 
@@ -34,8 +34,8 @@ export function useImageDownload(
     setCleanSize(null);
   }, []);
 
-  const setScale = useCallback((s: number) => {
-    setScaleState(s);
+  const setTargetWidth = useCallback((w: number | null) => {
+    setTargetWidthState(w);
     setCleanSize(null);
   }, []);
 
@@ -50,16 +50,21 @@ export function useImageDownload(
           img.onerror = reject;
         });
 
+        const outWidth = targetWidth ?? img.naturalWidth;
+        const outHeight = targetWidth
+          ? Math.round((targetWidth / img.naturalWidth) * img.naturalHeight)
+          : img.naturalHeight;
+
         const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.naturalWidth * (scale / 100));
-        canvas.height = Math.round(img.naturalHeight * (scale / 100));
+        canvas.width = outWidth;
+        canvas.height = outHeight;
         const ctx = canvas.getContext("2d");
 
         if (!ctx) {
           throw new Error("Canvas not supported");
         }
 
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, outWidth, outHeight);
 
         const mimeType = `image/${outputFormat}` as const;
         const ext = outputFormat === "jpeg" ? "jpg" : outputFormat;
@@ -88,27 +93,29 @@ export function useImageDownload(
         setDownloading(false);
       }
     },
-    [outputFormat, quality, scale],
+    [outputFormat, quality, targetWidth],
   );
 
-  const resetCleanSize = useCallback(() => setCleanSize(null), []);
+  const resetCleanSize = useCallback(() => {
+    setCleanSize(null);
+  }, []);
 
-  const resetScale = useCallback(() => {
-    setScaleState(100);
+  const resetTargetWidth = useCallback(() => {
+    setTargetWidthState(null);
     setCleanSize(null);
   }, []);
 
   return {
     outputFormat,
     quality,
-    scale,
+    targetWidth,
     cleanSize,
     downloading,
     setOutputFormat,
     setQuality,
-    setScale,
+    setTargetWidth,
     handleDownload,
     resetCleanSize,
-    resetScale,
+    resetTargetWidth,
   };
 }
