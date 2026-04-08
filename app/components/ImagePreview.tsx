@@ -8,12 +8,21 @@ interface ImagePreviewProps {
 
 export const ImagePreview = ({ file, imageUrl, onReset }: ImagePreviewProps) => (
   <>
-    <div className="w-full rounded-xl border border-overlay overflow-hidden mb-3 bg-surface">
+    <div className="relative w-full rounded-xl border border-overlay overflow-hidden mb-3 bg-surface">
+      {/* Blurred backdrop — visible only when image doesn't fill the width (portrait) */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={imageUrl}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover scale-110 blur-sm brightness-[0.65]"
+      />
+      {/* Main image */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={imageUrl}
         alt={file.name}
-        className="w-full max-h-96 object-contain"
+        className="relative z-10 w-full max-h-96 object-contain"
       />
     </div>
 
