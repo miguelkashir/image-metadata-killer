@@ -23,7 +23,7 @@ interface UseWatermarkReturn {
 
 export function useWatermark(): UseWatermarkReturn {
   const [watermarkUrl, setWatermarkUrl] = useState<string | null>(null);
-  const [position, setPosition] = useState<WatermarkPosition>({ x: 75, y: 75 });
+  const [position, setPosition] = useState<WatermarkPosition>({ x: 90, y: 90 });
   const [size, setSize] = useState(25);
   const [opacity, setOpacity] = useState(80);
 
@@ -76,7 +76,7 @@ export function useWatermark(): UseWatermarkReturn {
 
   const reset = useCallback(() => {
     clearWatermark();
-    setPosition({ x: 75, y: 75 });
+    setPosition({ x: 90, y: 90 });
     setSize(25);
     setOpacity(80);
   }, [clearWatermark]);

@@ -10,15 +10,38 @@ interface MetadataPanelProps {
   hasPersonalMetadata: boolean;
 }
 
-const COLOR_CLASSES: Record<string, { heading: string; badge: string; dot: string }> = {
-  red:    { heading: "text-red",    badge: "bg-red/10 text-red",       dot: "bg-red" },
-  cyan:   { heading: "text-cyan",   badge: "bg-cyan/10 text-cyan",     dot: "bg-cyan" },
-  purple: { heading: "text-purple", badge: "bg-purple/10 text-purple", dot: "bg-purple" },
-  yellow: { heading: "text-yellow", badge: "bg-yellow/10 text-yellow", dot: "bg-yellow" },
-  green:  { heading: "text-green",  badge: "bg-green/10 text-green",   dot: "bg-green" },
-  pink:   { heading: "text-pink",   badge: "bg-pink/10 text-pink",     dot: "bg-pink" },
-  orange: { heading: "text-orange", badge: "bg-orange/10 text-orange", dot: "bg-orange" },
-  muted:  { heading: "text-muted",  badge: "bg-overlay text-muted",    dot: "bg-muted" },
+const COLOR_CLASSES: Record<
+  string,
+  { heading: string; badge: string; dot: string }
+> = {
+  red: { heading: "text-red", badge: "bg-red/10 text-red", dot: "bg-red" },
+  cyan: { heading: "text-cyan", badge: "bg-cyan/10 text-cyan", dot: "bg-cyan" },
+  purple: {
+    heading: "text-purple",
+    badge: "bg-purple/10 text-purple",
+    dot: "bg-purple",
+  },
+  yellow: {
+    heading: "text-yellow",
+    badge: "bg-yellow/10 text-yellow",
+    dot: "bg-yellow",
+  },
+  green: {
+    heading: "text-green",
+    badge: "bg-green/10 text-green",
+    dot: "bg-green",
+  },
+  pink: { heading: "text-pink", badge: "bg-pink/10 text-pink", dot: "bg-pink" },
+  orange: {
+    heading: "text-orange",
+    badge: "bg-orange/10 text-orange",
+    dot: "bg-orange",
+  },
+  muted: {
+    heading: "text-muted",
+    badge: "bg-overlay text-muted",
+    dot: "bg-muted",
+  },
 };
 
 function getColor(color: string) {
@@ -51,7 +74,9 @@ const GroupSection = ({
             <span className={`font-mono text-xs font-semibold ${c.heading}`}>
               {group.label}
             </span>
-            <span className={`font-mono text-xs px-1.5 py-0.5 rounded-full ${c.badge}`}>
+            <span
+              className={`font-mono text-xs px-1.5 py-0.5 rounded-full ${c.badge}`}
+            >
               {entries.length}
             </span>
           </div>

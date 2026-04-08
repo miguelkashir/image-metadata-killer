@@ -1,5 +1,13 @@
 import { useState, useCallback } from "react";
 import type { OutputFormat } from "@/app/types/image";
+import type { WatermarkPosition } from "@/app/hooks/useWatermark";
+
+export interface WatermarkOptions {
+  url: string;
+  position: WatermarkPosition;
+  size: number;
+  opacity: number;
+}
 
 interface UseImageDownloadReturn {
   outputFormat: OutputFormat;
@@ -10,7 +18,11 @@ interface UseImageDownloadReturn {
   setOutputFormat: (fmt: OutputFormat) => void;
   setQuality: (q: number) => void;
   setTargetWidth: (w: number | null) => void;
-  handleDownload: (file: File, imageUrl: string) => Promise<void>;
+  handleDownload: (
+    file: File,
+    imageUrl: string,
+    watermark?: WatermarkOptions,
+  ) => Promise<void>;
   resetCleanSize: () => void;
   resetTargetWidth: () => void;
 }
@@ -18,8 +30,9 @@ interface UseImageDownloadReturn {
 export function useImageDownload(
   initialFormat: OutputFormat,
 ): UseImageDownloadReturn {
-  const [outputFormat, setOutputFormatState] = useState<OutputFormat>(initialFormat);
-  const [quality, setQualityState] = useState(92);
+  const [outputFormat, setOutputFormatState] =
+    useState<OutputFormat>(initialFormat);
+  const [quality, setQualityState] = useState(100);
   const [targetWidth, setTargetWidthState] = useState<number | null>(null);
   const [cleanSize, setCleanSize] = useState<number | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -40,7 +53,7 @@ export function useImageDownload(
   }, []);
 
   const handleDownload = useCallback(
-    async (file: File, imageUrl: string) => {
+    async (file: File, imageUrl: string, watermark?: WatermarkOptions) => {
       setDownloading(true);
       try {
         const img = new window.Image();
@@ -65,6 +78,28 @@ export function useImageDownload(
         }
 
         ctx.drawImage(img, 0, 0, outWidth, outHeight);
+
+        if (watermark) {
+          const wmImg = new window.Image();
+          wmImg.src = watermark.url;
+          await new Promise<void>((resolve, reject) => {
+            wmImg.onload = () => resolve();
+            wmImg.onerror = reject;
+          });
+
+          const wmWidth = Math.round((watermark.size / 100) * outWidth);
+          const wmHeight = Math.round(
+            (wmWidth / wmImg.naturalWidth) * wmImg.naturalHeight,
+          );
+          const wmX =
+            Math.round((watermark.position.x / 100) * outWidth) - wmWidth / 2;
+          const wmY =
+            Math.round((watermark.position.y / 100) * outHeight) - wmHeight / 2;
+
+          ctx.globalAlpha = watermark.opacity / 100;
+          ctx.drawImage(wmImg, wmX, wmY, wmWidth, wmHeight);
+          ctx.globalAlpha = 1;
+        }
 
         const mimeType = `image/${outputFormat}` as const;
         const ext = outputFormat === "jpeg" ? "jpg" : outputFormat;

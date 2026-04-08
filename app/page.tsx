@@ -69,6 +69,7 @@ export default function Home() {
               watermarkPosition={watermark.position}
               watermarkSize={watermark.size}
               watermarkOpacity={watermark.opacity}
+              onPositionChange={watermark.setPosition}
             />
 
             <OutputOptions
@@ -89,9 +90,7 @@ export default function Home() {
               onChange={watermark.handleWatermarkChange}
               onSizeChange={watermark.setSize}
               onOpacityChange={watermark.setOpacity}
-              onRemove={() => {
-                watermark.clearWatermark();
-              }}
+              onRemove={watermark.clearWatermark}
             />
 
             <ActionButtons
@@ -99,7 +98,20 @@ export default function Home() {
               loadingMetadata={metadataHook.loadingMetadata}
               downloading={downloadHook.downloading}
               onDisplayMetadata={() => metadataHook.handleDisplayMetadata(file)}
-              onDownload={() => downloadHook.handleDownload(file, imageUrl!)}
+              onDownload={() =>
+                downloadHook.handleDownload(
+                  file,
+                  imageUrl!,
+                  watermark.watermarkUrl
+                    ? {
+                        url: watermark.watermarkUrl,
+                        position: watermark.position,
+                        size: watermark.size,
+                        opacity: watermark.opacity,
+                      }
+                    : undefined,
+                )
+              }
             />
 
             {downloadHook.cleanSize !== null && (

@@ -30,7 +30,9 @@ export const OutputOptions = ({
     ? detectAspectRatio(dimensions.width, dimensions.height)
     : null;
 
-  const resolutionPresets = aspectKey ? RESOLUTION_PRESETS[aspectKey] ?? [] : [];
+  const resolutionPresets = aspectKey
+    ? (RESOLUTION_PRESETS[aspectKey] ?? [])
+    : [];
 
   const applicablePresets = resolutionPresets.filter(
     (p) => dimensions && p.width < dimensions.width,
@@ -40,7 +42,9 @@ export const OutputOptions = ({
     <div className="w-full bg-surface rounded-xl border border-overlay px-4 py-3 mb-4 space-y-3">
       {/* Format */}
       <div className="flex items-center gap-3">
-        <span className="font-mono text-xs text-muted w-16 shrink-0">format</span>
+        <span className="font-mono text-xs text-muted w-16 shrink-0">
+          format
+        </span>
         <div className="flex gap-1.5">
           {FORMATS.map((fmt) => (
             <button
@@ -61,7 +65,9 @@ export const OutputOptions = ({
       {/* Quality — hidden for PNG */}
       {outputFormat !== "png" && (
         <div className="flex items-center gap-3">
-          <span className="font-mono text-xs text-muted w-16 shrink-0">quality</span>
+          <span className="font-mono text-xs text-muted w-16 shrink-0">
+            quality
+          </span>
           <input
             type="range"
             min={1}
@@ -70,14 +76,18 @@ export const OutputOptions = ({
             onChange={(e) => onQualityChange(Number(e.target.value))}
             className="flex-1 h-1 accent-purple cursor-pointer"
           />
-          <span className="font-mono text-xs text-fg w-8 text-right">{quality}%</span>
+          <span className="font-mono text-xs text-fg w-8 text-right">
+            {quality}%
+          </span>
         </div>
       )}
 
       {/* Resize — only shown when resolution presets are available */}
       {applicablePresets.length > 0 && (
         <div className="flex items-start gap-3">
-          <span className="font-mono text-xs text-muted w-16 shrink-0 pt-1">resize</span>
+          <span className="font-mono text-xs text-muted w-16 shrink-0 pt-1">
+            resize
+          </span>
           <div className="flex flex-wrap gap-1.5">
             {/* "Original" reset option */}
             <button

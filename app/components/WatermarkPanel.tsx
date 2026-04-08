@@ -62,7 +62,9 @@ export const WatermarkPanel = ({
       {watermarkUrl && (
         <>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-xs text-muted w-16 shrink-0">size</span>
+            <span className="font-mono text-xs text-muted w-16 shrink-0">
+              size
+            </span>
             <input
               type="range"
               min={5}
@@ -71,11 +73,15 @@ export const WatermarkPanel = ({
               onChange={(e) => onSizeChange(Number(e.target.value))}
               className="flex-1 h-1 accent-yellow cursor-pointer"
             />
-            <span className="font-mono text-xs text-fg w-8 text-right">{size}%</span>
+            <span className="font-mono text-xs text-fg w-8 text-right">
+              {size}%
+            </span>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="font-mono text-xs text-muted w-16 shrink-0">opacity</span>
+            <span className="font-mono text-xs text-muted w-16 shrink-0">
+              opacity
+            </span>
             <input
               type="range"
               min={5}
@@ -84,7 +90,9 @@ export const WatermarkPanel = ({
               onChange={(e) => onOpacityChange(Number(e.target.value))}
               className="flex-1 h-1 accent-yellow cursor-pointer"
             />
-            <span className="font-mono text-xs text-fg w-8 text-right">{opacity}%</span>
+            <span className="font-mono text-xs text-fg w-8 text-right">
+              {opacity}%
+            </span>
           </div>
         </>
       )}
