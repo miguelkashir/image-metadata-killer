@@ -37,6 +37,7 @@ export default function Home() {
     downloadHook.resetCleanSize();
     downloadHook.resetTargetWidth();
     downloadHook.resetFlipped();
+    downloadHook.resetFlippedY();
     downloadHook.resetImageRotation();
     watermark.reset();
   });
@@ -53,6 +54,7 @@ export default function Home() {
         opacity: watermark.opacity,
         rotation: watermark.rotation,
         flipped: watermark.flipped,
+        flippedY: watermark.flippedY,
       };
     }
     if (watermark.type === "text" && watermark.text.trim().length > 0) {
@@ -95,12 +97,14 @@ export default function Home() {
               file={file}
               imageUrl={imageUrl!}
               flipped={downloadHook.flipped}
+              flippedY={downloadHook.flippedY}
               imageRotation={downloadHook.imageRotation}
               onReset={fileHandler.reset}
               watermarkType={watermark.type}
               watermarkUrl={watermark.watermarkUrl}
               watermarkSize={watermark.size}
               watermarkFlipped={watermark.flipped}
+              watermarkFlippedY={watermark.flippedY}
               watermarkText={watermark.text}
               watermarkFontSize={watermark.fontSize}
               watermarkColor={watermark.color}
@@ -115,12 +119,14 @@ export default function Home() {
               quality={downloadHook.quality}
               targetWidth={downloadHook.targetWidth}
               flipped={downloadHook.flipped}
+              flippedY={downloadHook.flippedY}
               imageRotation={downloadHook.imageRotation}
               dimensions={dimensions}
               onFormatChange={downloadHook.setOutputFormat}
               onQualityChange={downloadHook.setQuality}
               onTargetWidthChange={downloadHook.setTargetWidth}
               onFlipChange={downloadHook.setFlipped}
+              onFlipYChange={downloadHook.setFlippedY}
               onRotateImage={downloadHook.rotateImage}
             />
 
@@ -129,6 +135,7 @@ export default function Home() {
               watermarkUrl={watermark.watermarkUrl}
               size={watermark.size}
               flipped={watermark.flipped}
+              flippedY={watermark.flippedY}
               text={watermark.text}
               fontSize={watermark.fontSize}
               color={watermark.color}
@@ -139,6 +146,7 @@ export default function Home() {
               onChange={watermark.handleWatermarkChange}
               onSizeChange={watermark.setSize}
               onFlipChange={watermark.setFlipped}
+              onFlipYChange={watermark.setFlippedY}
               onTextChange={watermark.setText}
               onFontSizeChange={watermark.setFontSize}
               onColorChange={watermark.setColor}

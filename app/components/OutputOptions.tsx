@@ -11,12 +11,14 @@ interface OutputOptionsProps {
   quality: number;
   targetWidth: number | null;
   flipped: boolean;
+  flippedY: boolean;
   imageRotation: ImageRotation;
   dimensions: ImageDimensions | null;
   onFormatChange: (fmt: OutputFormat) => void;
   onQualityChange: (q: number) => void;
   onTargetWidthChange: (w: number | null) => void;
   onFlipChange: (f: boolean) => void;
+  onFlipYChange: (f: boolean) => void;
   onRotateImage: (dir: "cw" | "ccw") => void;
 }
 
@@ -27,12 +29,14 @@ export const OutputOptions = ({
   quality,
   targetWidth,
   flipped,
+  flippedY,
   imageRotation,
   dimensions,
   onFormatChange,
   onQualityChange,
   onTargetWidthChange,
   onFlipChange,
+  onFlipYChange,
   onRotateImage,
 }: OutputOptionsProps) => {
   const aspectKey = dimensions
@@ -50,7 +54,7 @@ export const OutputOptions = ({
   return (
     <div className="w-full bg-surface rounded-xl border border-overlay px-4 py-3 mb-4 space-y-3">
       {/* Header */}
-      <span className="font-mono text-xs text-purple/80 uppercase tracking-widest">
+      <span className="font-mono text-xs text-cyan/80 uppercase tracking-widest">
         settings
       </span>
 
@@ -74,7 +78,7 @@ export const OutputOptions = ({
           </button>
         </div>
         {imageRotation !== 0 && (
-          <span className="font-mono text-xs text-purple">{imageRotation}°</span>
+          <span className="font-mono text-xs text-cyan">{imageRotation}°</span>
         )}
       </div>
 
@@ -83,16 +87,28 @@ export const OutputOptions = ({
         <span className="font-mono text-xs text-muted w-16 shrink-0">
           mirror
         </span>
-        <button
-          onClick={() => onFlipChange(!flipped)}
-          className={`font-mono text-xs px-3 py-1 rounded-md border transition-colors duration-150 cursor-pointer ${
-            flipped
-              ? "border-purple bg-purple/10 text-purple"
-              : "border-overlay text-muted hover:text-fg hover:bg-overlay"
-          }`}
-        >
-          ↔ horizontal
-        </button>
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => onFlipChange(!flipped)}
+            className={`font-mono text-xs px-3 py-1 rounded-md border transition-colors duration-150 cursor-pointer ${
+              flipped
+                ? "border-cyan bg-cyan/10 text-cyan"
+                : "border-overlay text-muted hover:text-fg hover:bg-overlay"
+            }`}
+          >
+            ↔ horizontal
+          </button>
+          <button
+            onClick={() => onFlipYChange(!flippedY)}
+            className={`font-mono text-xs px-3 py-1 rounded-md border transition-colors duration-150 cursor-pointer ${
+              flippedY
+                ? "border-cyan bg-cyan/10 text-cyan"
+                : "border-overlay text-muted hover:text-fg hover:bg-overlay"
+            }`}
+          >
+            ↕ vertical
+          </button>
+        </div>
       </div>
 
       {/* Format */}
@@ -107,7 +123,7 @@ export const OutputOptions = ({
               onClick={() => onFormatChange(fmt)}
               className={`font-mono text-xs px-3 py-1 rounded-md transition-colors duration-150 cursor-pointer ${
                 outputFormat === fmt
-                  ? "bg-purple text-base"
+                  ? "bg-cyan/20 text-cyan"
                   : "text-muted hover:text-fg hover:bg-overlay"
               }`}
             >
@@ -129,7 +145,7 @@ export const OutputOptions = ({
             max={100}
             value={quality}
             onChange={(e) => onQualityChange(Number(e.target.value))}
-            className="flex-1 h-1 accent-purple cursor-pointer"
+            className="flex-1 h-1 accent-cyan cursor-pointer"
           />
           <span className="font-mono text-xs text-fg w-8 text-right">
             {quality}%

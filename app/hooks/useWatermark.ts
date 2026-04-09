@@ -14,6 +14,7 @@ interface UseWatermarkReturn {
   watermarkUrl: string | null;
   size: number;
   flipped: boolean;
+  flippedY: boolean;
   // text
   text: string;
   fontSize: number;
@@ -26,6 +27,7 @@ interface UseWatermarkReturn {
   setPosition: (pos: WatermarkPosition) => void;
   setSize: (s: number) => void;
   setFlipped: (f: boolean) => void;
+  setFlippedY: (f: boolean) => void;
   setOpacity: (o: number) => void;
   setText: (t: string) => void;
   setFontSize: (s: number) => void;
@@ -43,6 +45,7 @@ export function useWatermark(): UseWatermarkReturn {
   const [type, setType] = useState<WatermarkType>("image");
   const [watermarkUrl, setWatermarkUrl] = useState<string | null>(null);
   const [flipped, setFlipped] = useState(false);
+  const [flippedY, setFlippedY] = useState(false);
   const [position, setPosition] = useState<WatermarkPosition>({ x: 90, y: 90 });
   const [size, setSize] = useState(25);
   const [opacity, setOpacity] = useState(80);
@@ -105,6 +108,7 @@ export function useWatermark(): UseWatermarkReturn {
     setPosition({ x: 90, y: 90 });
     setSize(25);
     setFlipped(false);
+    setFlippedY(false);
     setOpacity(80);
     setFontSize(5);
     setColor("#ffffff");
@@ -116,6 +120,7 @@ export function useWatermark(): UseWatermarkReturn {
     watermarkUrl,
     size,
     flipped,
+    flippedY,
     text,
     fontSize,
     color,
@@ -126,6 +131,7 @@ export function useWatermark(): UseWatermarkReturn {
     setPosition,
     setSize,
     setFlipped,
+    setFlippedY,
     setOpacity,
     setText,
     setFontSize,

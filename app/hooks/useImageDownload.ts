@@ -11,6 +11,7 @@ export type WatermarkOptions =
       opacity: number;
       rotation: number;
       flipped: boolean;
+      flippedY: boolean;
     }
   | {
       type: "text";
@@ -29,6 +30,7 @@ interface UseImageDownloadReturn {
   quality: number;
   targetWidth: number | null;
   flipped: boolean;
+  flippedY: boolean;
   imageRotation: ImageRotation;
   cleanSize: number | null;
   downloading: boolean;
@@ -38,7 +40,9 @@ interface UseImageDownloadReturn {
   setQuality: (q: number) => void;
   setTargetWidth: (w: number | null) => void;
   setFlipped: (f: boolean) => void;
+  setFlippedY: (f: boolean) => void;
   resetFlipped: () => void;
+  resetFlippedY: () => void;
   rotateImage: (dir: "cw" | "ccw") => void;
   resetImageRotation: () => void;
   handleDownload: (
@@ -91,6 +95,7 @@ async function buildBlob(
   mimeType: string,
   quality: number | undefined,
   flipped: boolean,
+  flippedY: boolean,
   imageRotation: ImageRotation,
   watermark?: WatermarkOptions,
 ): Promise<Blob> {
@@ -122,11 +127,7 @@ async function buildBlob(
   // Draw main image using center-based transform so rotation + flip compose cleanly
   ctx.save();
   ctx.translate(canvasW / 2, canvasH / 2);
-
-  if (flipped) {
-    ctx.scale(-1, 1);
-  }
-
+  ctx.scale(flipped ? -1 : 1, flippedY ? -1 : 1);
   ctx.rotate((imageRotation * Math.PI) / 180);
   ctx.drawImage(img, -outWidth / 2, -outHeight / 2, outWidth, outHeight);
   ctx.restore();
@@ -150,11 +151,7 @@ async function buildBlob(
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate((watermark.rotation * Math.PI) / 180);
-
-      if (watermark.flipped) {
-        ctx.scale(-1, 1);
-      }
-
+      ctx.scale(watermark.flipped ? -1 : 1, watermark.flippedY ? -1 : 1);
       ctx.globalAlpha = watermark.opacity / 100;
       ctx.drawImage(wmImg, -wmWidth / 2, -wmHeight / 2, wmWidth, wmHeight);
       ctx.restore();
@@ -195,6 +192,7 @@ export function useImageDownload(
   const [quality, setQualityState] = useState(100);
   const [targetWidth, setTargetWidthState] = useState<number | null>(null);
   const [flipped, setFlippedState] = useState(false);
+  const [flippedY, setFlippedYState] = useState(false);
   const [imageRotation, setImageRotationState] = useState<ImageRotation>(0);
   const [cleanSize, setCleanSize] = useState<number | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -222,6 +220,11 @@ export function useImageDownload(
     setCleanSize(null);
   }, []);
 
+  const setFlippedY = useCallback((f: boolean) => {
+    setFlippedYState(f);
+    setCleanSize(null);
+  }, []);
+
   const rotateImage = useCallback((dir: "cw" | "ccw") => {
     setImageRotationState((prev) => {
       const delta = dir === "cw" ? 90 : 270;
@@ -245,6 +248,7 @@ export function useImageDownload(
           mimeType,
           qualityArg,
           flipped,
+          flippedY,
           imageRotation,
           watermark,
         );
@@ -264,7 +268,7 @@ export function useImageDownload(
         setDownloading(false);
       }
     },
-    [outputFormat, quality, targetWidth, flipped, imageRotation],
+    [outputFormat, quality, targetWidth, flipped, flippedY, imageRotation],
   );
 
   const handleCopy = useCallback(
@@ -278,6 +282,7 @@ export function useImageDownload(
           "image/png",
           undefined,
           flipped,
+          flippedY,
           imageRotation,
           watermark,
         );
@@ -295,7 +300,7 @@ export function useImageDownload(
         setCopying(false);
       }
     },
-    [targetWidth, flipped, imageRotation],
+    [targetWidth, flipped, flippedY, imageRotation],
   );
 
   const resetCleanSize = useCallback(() => setCleanSize(null), []);
@@ -305,6 +310,11 @@ export function useImageDownload(
   }, []);
   const resetFlipped = useCallback(() => {
     setFlippedState(false);
+    setCleanSize(null);
+  }, []);
+
+  const resetFlippedY = useCallback(() => {
+    setFlippedYState(false);
     setCleanSize(null);
   }, []);
 
@@ -318,6 +328,7 @@ export function useImageDownload(
     quality,
     targetWidth,
     flipped,
+    flippedY,
     imageRotation,
     cleanSize,
     downloading,
@@ -327,7 +338,9 @@ export function useImageDownload(
     setQuality,
     setTargetWidth,
     setFlipped,
+    setFlippedY,
     resetFlipped,
+    resetFlippedY,
     rotateImage,
     resetImageRotation,
     handleDownload,

@@ -10,6 +10,7 @@ interface ImagePreviewProps {
   file: File;
   imageUrl: string;
   flipped?: boolean;
+  flippedY?: boolean;
   imageRotation?: ImageRotation;
   onReset: () => void;
   watermarkType?: WatermarkType;
@@ -17,6 +18,7 @@ interface ImagePreviewProps {
   watermarkUrl?: string | null;
   watermarkSize?: number;
   watermarkFlipped?: boolean;
+  watermarkFlippedY?: boolean;
   // text watermark
   watermarkText?: string;
   watermarkFontSize?: number;
@@ -35,15 +37,14 @@ interface ImageRect {
   height: number;
 }
 
-function getContainedRect(elem: HTMLImageElement, rotation: ImageRotation): ImageRect {
+function getContainedRect(elem: HTMLImageElement): ImageRect {
   const { naturalWidth, naturalHeight, clientWidth, clientHeight } = elem;
-  // For 90/270° the image occupies swapped natural dimensions within the element
-  const isSwapped = rotation === 90 || rotation === 270;
-  const natW = isSwapped ? naturalHeight : naturalWidth;
-  const natH = isSwapped ? naturalWidth : naturalHeight;
-  const scale = Math.min(clientWidth / natW, clientHeight / natH);
-  const w = natW * scale;
-  const h = natH * scale;
+  const scale = Math.min(
+    clientWidth / naturalWidth,
+    clientHeight / naturalHeight,
+  );
+  const w = naturalWidth * scale;
+  const h = naturalHeight * scale;
 
   return {
     x: (clientWidth - w) / 2,
@@ -57,12 +58,14 @@ export const ImagePreview = ({
   file,
   imageUrl,
   flipped = false,
+  flippedY = false,
   imageRotation = 0,
   onReset,
   watermarkType = "image",
   watermarkUrl,
   watermarkSize = 25,
   watermarkFlipped = false,
+  watermarkFlippedY = false,
   watermarkText = "",
   watermarkFontSize = 5,
   watermarkColor = "#ffffff",
@@ -76,11 +79,94 @@ export const ImagePreview = ({
   const [imageRect, setImageRect] = useState<ImageRect | null>(null);
   const dragging = useRef(false);
 
+  // The last successfully rendered canvas data URL and the rotation it was
+  // built for. Both are updated together (inside the async decode callback)
+  // so they always agree with each other.
+  const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+  const [generatedRotation, setGeneratedRotation] = useState<ImageRotation>(0);
+
+  // Derived — no setState needed. When there are no transforms we use the
+  // original imageUrl directly so the effect never has to call setState
+  // synchronously, which would trigger a cascading render (lint rule).
+  const noTransform = imageRotation === 0 && !flipped && !flippedY;
+  const previewUrl = noTransform ? imageUrl : (generatedUrl ?? imageUrl);
+  // Use the rotation baked into the current canvas, not the pending one,
+  // so is90or270 and previewUrl stay in sync and avoid a layout flash.
+  const is90or270 =
+    !noTransform && (generatedRotation === 90 || generatedRotation === 270);
+
+  useEffect(() => {
+    // No transform needed — previewUrl is derived from imageUrl directly,
+    // nothing to generate. Return without touching state.
+    if (imageRotation === 0 && !flipped && !flippedY) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const img = new window.Image();
+    img.src = imageUrl;
+    img.onload = () => {
+      if (cancelled) {
+        return;
+      }
+
+      const { naturalWidth: nw, naturalHeight: nh } = img;
+      const isSwapped = imageRotation === 90 || imageRotation === 270;
+
+      // 1200px is plenty for a preview panel and keeps encoding fast.
+      const MAX_DIM = 1200;
+      const scale = Math.min(1, MAX_DIM / Math.max(nw, nh));
+      const canvasW = Math.round((isSwapped ? nh : nw) * scale);
+      const canvasH = Math.round((isSwapped ? nw : nh) * scale);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = canvasW;
+      canvas.height = canvasH;
+      const ctx = canvas.getContext("2d")!;
+
+      // Match buildBlob transform order: flip first, then rotate.
+      ctx.translate(canvasW / 2, canvasH / 2);
+      ctx.scale(flipped ? -1 : 1, flippedY ? -1 : 1);
+      ctx.rotate((imageRotation * Math.PI) / 180);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, -nw / 2, -nh / 2);
+
+      // WebP encodes ~10× faster than PNG; toDataURL is synchronous so there
+      // is no async gap between encoding and the decode() preload below.
+      const dataUrl = canvas.toDataURL("image/webp", 0.92);
+
+      // Decode the image before updating state so the browser has it
+      // paint-ready the instant the <img> src changes — no blank frame.
+      void (async () => {
+        try {
+          const preload = new window.Image();
+          preload.src = dataUrl;
+          await preload.decode();
+        } catch {
+          // decode() failed — proceed anyway
+        }
+        if (cancelled) {
+          return;
+        }
+
+        // Both state updates are inside an async callback, never in the
+        // synchronous effect body, so no cascading render lint warning.
+        setGeneratedRotation(imageRotation);
+        setGeneratedUrl(dataUrl);
+      })();
+    };
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUrl, imageRotation, flipped, flippedY]);
+
   const updateImageRect = useCallback(() => {
     if (imgRef.current && imgRef.current.naturalWidth > 0) {
-      setImageRect(getContainedRect(imgRef.current, imageRotation));
+      setImageRect(getContainedRect(imgRef.current));
     }
-  }, [imageRotation]);
+  }, []);
 
   useEffect(() => {
     const observer = new ResizeObserver(updateImageRect);
@@ -91,10 +177,10 @@ export const ImagePreview = ({
     return () => observer.disconnect();
   }, [updateImageRect]);
 
-  // Re-compute rect when rotation changes (ResizeObserver won't fire)
+  // Re-compute rect when a new canvas is committed.
   useEffect(() => {
     updateImageRect();
-  }, [imageRotation, updateImageRect]);
+  }, [generatedUrl, updateImageRect]);
 
   // Clamp using the actual rendered element dimensions so edges stay within the image.
   const posFromPointer = useCallback(
@@ -187,31 +273,29 @@ export const ImagePreview = ({
   const showTextWatermark =
     watermarkType === "text" && watermarkText.trim().length > 0 && imageRect;
 
+  // For 90°/270°, the pre-rotated canvas is portrait (or landscape-flipped).
   return (
     <>
       <div
         ref={containerRef}
         className="relative w-full rounded-xl border border-overlay overflow-hidden mb-3 bg-surface"
       >
-        {/* Blurred backdrop */}
+        {/* Blurred backdrop — uses the same pre-rotated URL so it rotates with the image */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={imageUrl}
+          src={previewUrl}
           alt=""
           aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover scale-110 blur-sm brightness-[0.65]"
         />
 
-        {/* Main image */}
+        {/* Main image — rotation/flip already baked into previewUrl, no CSS transform needed */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={imgRef}
-          src={imageUrl}
+          src={previewUrl}
           alt={file.name}
-          className="relative z-10 w-full max-h-96 object-contain"
-          style={{
-            transform: `rotate(${imageRotation}deg)${flipped ? " scaleX(-1)" : ""}`,
-          }}
+          className={`relative z-10 w-full object-contain${is90or270 ? "" : " max-h-96"}`}
           onLoad={updateImageRect}
         />
 
@@ -225,7 +309,7 @@ export const ImagePreview = ({
             style={{
               left: wmLeft,
               top: wmTop,
-              transform: `translate(-50%, -50%) rotate(${watermarkRotation}deg)${watermarkFlipped ? " scaleX(-1)" : ""}`,
+              transform: `translate(-50%, -50%) rotate(${watermarkRotation}deg)${watermarkFlipped ? " scaleX(-1)" : ""}${watermarkFlippedY ? " scaleY(-1)" : ""}`,
               width: (watermarkSize / 100) * imageRect!.width,
               opacity: watermarkOpacity / 100,
             }}

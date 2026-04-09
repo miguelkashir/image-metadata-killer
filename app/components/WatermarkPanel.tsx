@@ -20,6 +20,7 @@ interface WatermarkPanelProps {
   watermarkUrl: string | null;
   size: number;
   flipped: boolean;
+  flippedY: boolean;
   // text
   text: string;
   fontSize: number;
@@ -32,6 +33,7 @@ interface WatermarkPanelProps {
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onSizeChange: (s: number) => void;
   onFlipChange: (f: boolean) => void;
+  onFlipYChange: (f: boolean) => void;
   onTextChange: (t: string) => void;
   onFontSizeChange: (s: number) => void;
   onColorChange: (c: string) => void;
@@ -47,6 +49,7 @@ export const WatermarkPanel = ({
   watermarkUrl,
   size,
   flipped,
+  flippedY,
   text,
   fontSize,
   color,
@@ -57,6 +60,7 @@ export const WatermarkPanel = ({
   onChange,
   onSizeChange,
   onFlipChange,
+  onFlipYChange,
   onTextChange,
   onFontSizeChange,
   onColorChange,
@@ -160,16 +164,28 @@ export const WatermarkPanel = ({
                 <span className="font-mono text-xs text-muted w-16 shrink-0">
                   mirror
                 </span>
-                <button
-                  onClick={() => onFlipChange(!flipped)}
-                  className={`font-mono text-xs px-3 py-1 rounded-md border transition-colors duration-150 cursor-pointer ${
-                    flipped
-                      ? "border-yellow bg-yellow/10 text-yellow"
-                      : "border-overlay text-muted hover:text-fg hover:bg-overlay"
-                  }`}
-                >
-                  ↔ horizontal
-                </button>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => onFlipChange(!flipped)}
+                    className={`font-mono text-xs px-3 py-1 rounded-md border transition-colors duration-150 cursor-pointer ${
+                      flipped
+                        ? "border-yellow bg-yellow/10 text-yellow"
+                        : "border-overlay text-muted hover:text-fg hover:bg-overlay"
+                    }`}
+                  >
+                    ↔ horizontal
+                  </button>
+                  <button
+                    onClick={() => onFlipYChange(!flippedY)}
+                    className={`font-mono text-xs px-3 py-1 rounded-md border transition-colors duration-150 cursor-pointer ${
+                      flippedY
+                        ? "border-yellow bg-yellow/10 text-yellow"
+                        : "border-overlay text-muted hover:text-fg hover:bg-overlay"
+                    }`}
+                  >
+                    ↕ vertical
+                  </button>
+                </div>
               </div>
             </>
           )}
